@@ -1,23 +1,34 @@
 from __future__ import annotations
 
-import importlib.util
 from dataclasses import dataclass
 
 from cn_graphrag_eval_opt.models import PipelineConfig
+from cn_graphrag_eval_opt.providers import default_provider_registry
 
 
 @dataclass(frozen=True)
 class IntegrationStatus:
+    name: str
     package: str
     available: bool
     role: str
+    capabilities: tuple[str, ...]
+    import_name: str
+    install_hint: str
 
 
 def optional_integrations() -> list[IntegrationStatus]:
     return [
-        IntegrationStatus("lightrag", _available("lightrag"), "GraphRAG indexing/query backend"),
-        IntegrationStatus("autorag", _available("autorag"), "pipeline search backend"),
-        IntegrationStatus("ragas", _available("ragas"), "LLM-based RAG evaluation metrics"),
+        IntegrationStatus(
+            name=provider.name,
+            package=provider.package,
+            available=provider.available,
+            role=provider.role,
+            capabilities=provider.capabilities,
+            import_name=provider.import_name,
+            install_hint=provider.install_hint,
+        )
+        for provider in default_provider_registry().list()
     ]
 
 
@@ -59,7 +70,3 @@ def ragas_metric_mapping() -> dict[str, str]:
         "answer_relevance": "answer_relevancy",
         "faithfulness": "faithfulness",
     }
-
-
-def _available(module: str) -> bool:
-    return importlib.util.find_spec(module) is not None
