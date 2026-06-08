@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cn-graphrag-eval-opt"
+version = "0.1.0"
+description = "Chinese enterprise document GraphRAG retrieval evaluation and optimization toolkit inspired by LightRAG, AutoRAG, and Ragas."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "cetshow" }]
+license = { text = "MIT" }
+keywords = ["RAG", "GraphRAG", "LightRAG", "AutoRAG", "Ragas", "Chinese"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = []
+
+[project.optional-dependencies]
+integrations = [
+    "lightrag-hku>=1.4.0",
+    "ragas>=0.3.0",
+    "AutoRAG>=0.3.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.8.0",
+]
+
+[project.scripts]
+cn-graphrag-eval = "cn_graphrag_eval_opt.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cn_graphrag_eval_opt"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
