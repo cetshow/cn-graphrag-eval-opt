@@ -1,0 +1,45 @@
+[project]
+name = "cn-graphrag-eval-opt"
+version = "0.2.0"
+description = "Chinese enterprise document GraphRAG retrieval evaluation and optimization toolkit."
+
+[corpus]
+corpus_path = "examples/corpus"
+qa_path = "examples/qa.jsonl"
+out_dir = "runs/demo"
+
+[reporting]
+formats = ["json", "markdown", "csv"]
+
+[optimization]
+rank_metrics = ["retrieval_recall", "faithfulness", "answer_relevance", "context_precision"]
+
+[[optimization.configs]]
+query_mode = "naive"
+chunk_size = 96
+overlap = 12
+top_k = 2
+
+[[optimization.configs]]
+query_mode = "local"
+chunk_size = 128
+overlap = 16
+top_k = 3
+
+[[optimization.configs]]
+query_mode = "global"
+chunk_size = 128
+overlap = 16
+top_k = 3
+
+[[optimization.configs]]
+query_mode = "hybrid"
+chunk_size = 160
+overlap = 24
+top_k = 3
+
+[[optimization.configs]]
+query_mode = "mix"
+chunk_size = 192
+overlap = 24
+top_k = 4

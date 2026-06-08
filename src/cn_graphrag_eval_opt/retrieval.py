@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 
+from cn_graphrag_eval_opt.embeddings import HashingEmbeddingModel, cosine_similarity
 from cn_graphrag_eval_opt.graph import GraphIndex, extract_entities
 from cn_graphrag_eval_opt.models import QUERY_MODES, RetrievalResult
 from cn_graphrag_eval_opt.text import tokenize
@@ -10,8 +11,13 @@ from cn_graphrag_eval_opt.text import tokenize
 class GraphRAGRetriever:
     """LightRAG-style retriever with naive, local, global, hybrid, and mix modes."""
 
-    def __init__(self, index: GraphIndex) -> None:
+    def __init__(self, index: GraphIndex, embedding_model: HashingEmbeddingModel | None = None) -> None:
         self.index = index
+        self.embedding_model = embedding_model or HashingEmbeddingModel()
+        self._chunk_vectors = {
+            chunk_id: self.embedding_model.embed(chunk.text)
+            for chunk_id, chunk in self.index.chunks.items()
+        }
 
     def retrieve(self, query: str, top_k: int = 3, mode: str = "mix") -> list[RetrievalResult]:
         if mode not in QUERY_MODES:
@@ -32,6 +38,9 @@ class GraphRAGRetriever:
             for chunk_id, score in lexical.items():
                 scores[chunk_id] += score
                 evidence[chunk_id].append("lexical")
+            for chunk_id, score in self._dense_scores(query).items():
+                scores[chunk_id] += score
+                evidence[chunk_id].append("dense")
 
         if mode in {"local", "hybrid", "mix"}:
             for chunk_id in local_ids:
@@ -71,4 +80,13 @@ class GraphRAGRetriever:
             phrase_bonus = sum(0.7 for term in query_terms if term and term in chunk.text)
             if overlap or phrase_bonus:
                 scores[chunk_id] = float(overlap) + phrase_bonus
+        return scores
+
+    def _dense_scores(self, query: str) -> dict[str, float]:
+        query_vector = self.embedding_model.embed(query)
+        scores: dict[str, float] = {}
+        for chunk_id, chunk_vector in self._chunk_vectors.items():
+            score = cosine_similarity(query_vector, chunk_vector)
+            if score > 0:
+                scores[chunk_id] = round(score * 3.0, 4)
         return scores

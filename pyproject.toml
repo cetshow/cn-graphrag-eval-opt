@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cn-graphrag-eval-opt"
-version = "0.1.0"
+version = "0.2.0"
 description = "Chinese enterprise document GraphRAG retrieval evaluation and optimization toolkit inspired by LightRAG, AutoRAG, and Ragas."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,7 +18,9 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-dependencies = []
+dependencies = [
+    "tomli>=2.0.0; python_version<'3.11'",
+]
 
 [project.optional-dependencies]
 integrations = [
@@ -30,6 +32,10 @@ dev = [
     "pytest>=8.0.0",
     "ruff>=0.8.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/cetshow/cn-graphrag-eval-opt"
+Issues = "https://github.com/cetshow/cn-graphrag-eval-opt/issues"
 
 [project.scripts]
 cn-graphrag-eval = "cn_graphrag_eval_opt.cli:main"

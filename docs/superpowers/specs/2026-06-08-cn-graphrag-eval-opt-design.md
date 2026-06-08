@@ -2,9 +2,9 @@
 
 ## Goal
 
-Build a resume-ready Chinese enterprise document GraphRAG evaluation and optimization toolkit under
-`D:\Data\Projects\cn-graphrag-eval-opt`, initialize it as a git repository, and push it to the private
-GitHub repository `cetshow/cn-graphrag-eval-opt`.
+Build a resume-ready Chinese enterprise document GraphRAG evaluation and optimization toolkit,
+initialize it as a git repository, and push it to the private GitHub repository
+`cetshow/cn-graphrag-eval-opt`.
 
 ## Upstream References
 
