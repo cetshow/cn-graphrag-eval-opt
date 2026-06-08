@@ -1,11 +1,21 @@
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from collections import Counter
 
 from cn_graphrag_eval_opt.embeddings import HashingEmbeddingModel, cosine_similarity
+from cn_graphrag_eval_opt.fusion import reciprocal_rank_fusion
 from cn_graphrag_eval_opt.graph import GraphIndex, extract_entities
 from cn_graphrag_eval_opt.models import QUERY_MODES, RetrievalResult
 from cn_graphrag_eval_opt.text import tokenize
+
+
+SIGNALS_BY_MODE = {
+    "naive": ("lexical", "dense"),
+    "local": ("local",),
+    "global": ("global",),
+    "hybrid": ("lexical", "dense", "local", "global"),
+    "mix": ("lexical", "dense", "local", "global"),
+}
 
 
 class GraphRAGRetriever:
@@ -31,42 +41,34 @@ class GraphRAGRetriever:
         global_entities = self.index.neighbor_entities(query_entities)
         global_ids = self.index.chunk_ids_for_entities(global_entities)
 
-        scores: dict[str, float] = defaultdict(float)
-        evidence: dict[str, list[str]] = defaultdict(list)
+        dense = self._dense_scores(query)
+        signal_scores = {
+            "lexical": lexical,
+            "dense": dense,
+            "local": self._graph_scores(local_ids, lexical, dense, base_score=2.0),
+            "global": self._graph_scores(global_ids, lexical, dense, base_score=1.4),
+        }
+        ranked_signals = {
+            signal: _ranked_ids(signal_scores[signal])
+            for signal in SIGNALS_BY_MODE[mode]
+            if signal_scores[signal]
+        }
+        if not ranked_signals:
+            ranked_signals = {"lexical_fallback": _ranked_ids(lexical or dense)}
 
-        if mode in {"naive", "hybrid", "mix"}:
-            for chunk_id, score in lexical.items():
-                scores[chunk_id] += score
-                evidence[chunk_id].append("lexical")
-            for chunk_id, score in self._dense_scores(query).items():
-                scores[chunk_id] += score
-                evidence[chunk_id].append("dense")
-
-        if mode in {"local", "hybrid", "mix"}:
-            for chunk_id in local_ids:
-                scores[chunk_id] += 2.0
-                evidence[chunk_id].append("local_entity")
-
-        if mode in {"global", "hybrid", "mix"}:
-            for chunk_id in global_ids:
-                scores[chunk_id] += 1.4
-                evidence[chunk_id].append("global_neighbor")
-
-        if not scores:
-            scores.update(lexical)
-            for chunk_id in lexical:
-                evidence[chunk_id].append("lexical_fallback")
-
-        ranked = sorted(scores.items(), key=lambda item: (-item[1], item[0]))[:top_k]
+        ranked = reciprocal_rank_fusion(ranked_signals)[:top_k]
         return [
             RetrievalResult(
-                chunk=self.index.chunks[chunk_id],
-                score=round(score, 4),
+                chunk=self.index.chunks[item.item_id],
+                score=round(item.score, 4),
                 mode=mode,
-                evidence=evidence[chunk_id],
+                evidence=[
+                    f"{contribution.signal}:rank={contribution.rank}:rrf={contribution.score:.4f}"
+                    for contribution in item.signals
+                ],
             )
-            for chunk_id, score in ranked
-            if score > 0
+            for item in ranked
+            if item.score > 0
         ]
 
     def _lexical_scores(self, query: str) -> dict[str, float]:
@@ -90,3 +92,24 @@ class GraphRAGRetriever:
             if score > 0:
                 scores[chunk_id] = round(score * 3.0, 4)
         return scores
+
+    def _graph_scores(
+        self,
+        chunk_ids: set[str],
+        lexical: dict[str, float],
+        dense: dict[str, float],
+        *,
+        base_score: float,
+    ) -> dict[str, float]:
+        return {
+            chunk_id: (
+                base_score
+                + lexical.get(chunk_id, 0.0) * 0.01
+                + dense.get(chunk_id, 0.0) * 0.005
+            )
+            for chunk_id in chunk_ids
+        }
+
+
+def _ranked_ids(scores: dict[str, float]) -> list[str]:
+    return [chunk_id for chunk_id, _ in sorted(scores.items(), key=lambda item: (-item[1], item[0]))]
