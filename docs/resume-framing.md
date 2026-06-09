@@ -10,15 +10,17 @@ turns Chinese enterprise documents into a repeatable GraphRAG evaluation and opt
 
 The toolkit loads Markdown/TXT policy documents, splits them with Chinese-aware chunking, builds an
 entity co-occurrence graph, retrieves with LightRAG-style `naive`, `local`, `global`, `hybrid`, and
-`mix` modes, evaluates each QA case, and ranks pipeline configurations. It writes reproducible
-AutoRAG-style artifacts: corpus manifests, chunks, entity graphs, case-level metrics, leaderboards,
-best configs, and Markdown reports.
+`mix` modes, fuses lexical/dense/graph signals with Reciprocal Rank Fusion, evaluates each QA case,
+and ranks pipeline configurations. It writes reproducible AutoRAG-style artifacts: corpus manifests,
+chunks, entity graphs, case-level metrics, leaderboards, best configs, and Markdown reports.
 
 ## Metrics
 
 The baseline is deterministic so it can run in CI without model credentials. It tracks retrieval
 recall, context precision, answer relevance, faithfulness, estimated context characters, and estimated
-token cost. Optional adapter points map the local metric vocabulary to Ragas-style evaluation concepts.
+token cost. Optional adapter points map the local metric vocabulary to Ragas-style and DeepEval-style
+evaluation concepts, while the `quality-gate` CLI can fail CI when a retrieval run falls below
+configured thresholds.
 
 ## Impact
 
@@ -29,13 +31,13 @@ production-facing query traces. These are the parts interviewers can ask about d
 ## Interview Pitch
 
 Built a Chinese enterprise GraphRAG evaluation and optimization toolkit inspired by Microsoft GraphRAG,
-LightRAG, AutoRAG, Ragas, and R2R. Implemented config-driven indexing, graph-enhanced retrieval modes,
-deterministic RAG metrics, pipeline search, query tracing, and reproducible reports so changes to a RAG
-pipeline can be measured rather than guessed.
+LightRAG, AutoRAG, Ragas, DeepEval, and R2R. Implemented config-driven indexing, RRF graph-enhanced
+retrieval modes, deterministic RAG metrics, pipeline search, CI quality gates, query tracing, and
+reproducible reports so changes to a RAG pipeline can be measured rather than guessed.
 
 ## Resume Bullet
 
 - Built a Chinese enterprise GraphRAG evaluation toolkit with config-driven indexing, graph-enhanced
-  retrieval, deterministic RAG metrics, pipeline optimization, traced query responses, and reproducible
-  experiment artifacts including corpus manifests, entity graphs, case-level results, leaderboards, and
-  reports.
+  RRF retrieval, deterministic RAG metrics, CI quality gates, pipeline optimization, traced query
+  responses, MiMo/OpenAI-compatible LLM configuration, and reproducible experiment artifacts including
+  corpus manifests, entity graphs, case-level results, leaderboards, and reports.

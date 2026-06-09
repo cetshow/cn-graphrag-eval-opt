@@ -19,6 +19,7 @@ class DocumentationQualityTest(unittest.TestCase):
 
         self.assertIn("python -m unittest discover -s tests", workflow)
         self.assertIn("python -m cn_graphrag_eval_opt optimize --config configs/default.toml", workflow)
+        self.assertIn("python -m cn_graphrag_eval_opt quality-gate", workflow)
 
     def test_resume_framing_doc_covers_interview_talking_points(self):
         doc = Path("docs/resume-framing.md").read_text(encoding="utf-8")

@@ -20,6 +20,8 @@
 - ⚡ [HKUDS LightRAG](https://github.com/HKUDS/LightRAG)：轻量图增强检索和 local/global/hybrid/mix 查询模式。
 - 🧪 [AutoRAG](https://github.com/Marker-Inc-Korea/AutoRAG)：基于 corpus + QA 的 pipeline 搜索和 leaderboard。
 - 📏 [Ragas](https://github.com/vibrantlabsai/ragas)：context precision、answer relevance、faithfulness 等评测指标语义。
+- ✅ [DeepEval](https://github.com/confident-ai/deepeval)：CI-friendly 质量门禁和回归测试思路。
+- 🧰 [RAGFlow](https://github.com/infiniflow/ragflow)：面向操作者的 RAG 工作流与产品体验参考。
 - 🚀 [R2R](https://github.com/SciPhi-AI/R2R)：面向服务化的 query trace 响应形态。
 
 ### ✨ 核心能力
@@ -29,9 +31,12 @@
 | 📚 文档处理 | 加载 Markdown/TXT 企业文档，生成 corpus manifest |
 | ✂️ 中文分块 | 支持 sentence / recursive / fixed 策略和 overlap |
 | 🕸️ 图谱索引 | 抽取企业实体，构建 chunk-entity 和 entity-entity 共现图 |
-| 🔎 GraphRAG 检索 | 支持 `naive`、`local`、`global`、`hybrid`、`mix` |
-| 📊 评测指标 | deterministic Ragas-style proxy metrics，适合 CI |
+| 🔎 GraphRAG 检索 | 支持 `naive`、`local`、`global`、`hybrid`、`mix`，并用 RRF 融合 lexical / dense / graph 信号 |
+| 📊 评测指标 | deterministic Ragas-style proxy metrics，支持 DeepEval-style 质量门禁 |
 | 🧭 配置搜索 | AutoRAG-style 多 pipeline config 搜索和 best config 输出 |
+| 🧩 Provider Registry | 记录 LightRAG、AutoRAG、Ragas、DeepEval、Neo4j 等可选生态集成 |
+| 🧱 持久化存储 | JSONL index store 支持 chunks、entities、edges round trip |
+| 🔌 Query API | API-ready query response，包含 citations、contexts、scores、trace |
 | 🧾 实验产物 | 输出 chunks、entities、case results、leaderboard、summary、report |
 | 🤖 LLM 配置 | 支持 MiMo / OpenAI-compatible `.env` 配置和脱敏检查 |
 
@@ -44,12 +49,18 @@ cn-graphrag-eval-opt/
   examples/qa.jsonl                    # 种子 QA benchmark
   src/cn_graphrag_eval_opt/
     config.py                          # 项目配置模型
+    connectors.py                      # corpus connector registry
     corpus.py                          # corpus / QA 加载
     datasets.py                        # bootstrap QA 构造
     chunking.py                        # 中文分块
     graph.py                           # 实体图谱索引
+    fusion.py                          # reciprocal rank fusion
     retrieval.py                       # GraphRAG 检索器
     evaluation.py                      # RAG 指标与答案合成
+    evaluator_adapters.py              # Ragas / DeepEval 数据适配与质量门禁
+    providers.py                       # optional provider registry
+    stores.py                          # JSONL index store
+    api.py                             # query request / response dataclasses
     llm.py                             # LLM .env 配置加载
     optimization.py                    # pipeline 搜索
     pipeline.py                        # ingest -> index -> evaluate 编排
@@ -135,11 +146,14 @@ python -m unittest discover -s tests
 python -m cn_graphrag_eval_opt integrations
 python -m cn_graphrag_eval_opt llm-config --env .env.example
 python -m cn_graphrag_eval_opt optimize --config configs/default.toml
+python -m cn_graphrag_eval_opt quality-gate --summary runs/demo/summary.json --threshold retrieval_recall=0.8 --threshold faithfulness=0.7
 ```
 
 ### 🎯 简历表述
 
-> 构建了一个中文企业文档 GraphRAG 检索评测与优化工具包，参考 LightRAG、Microsoft GraphRAG、AutoRAG 和 Ragas 的工程模式，实现配置驱动索引、图增强检索、多 pipeline 搜索、RAG 指标评测、query trace、MiMo/OpenAI-compatible LLM 配置和可复现实验报告。
+> 构建了一个中文企业文档 GraphRAG 检索评测与优化工具包，参考 LightRAG、Microsoft GraphRAG、AutoRAG、Ragas、DeepEval 和 R2R 的工程模式，实现配置驱动索引、RRF 图增强检索、多 pipeline 搜索、RAG 指标评测、CI 质量门禁、query trace、MiMo/OpenAI-compatible LLM 配置和可复现实验报告。
+
+更完整的项目讲述见 [`docs/resume-framing.md`](docs/resume-framing.md)。
 
 ---
 
@@ -153,6 +167,8 @@ This repository is inspired by proven open-source RAG systems, while keeping the
 - ⚡ [HKUDS LightRAG](https://github.com/HKUDS/LightRAG): lightweight graph-enhanced local/global/hybrid/mix retrieval.
 - 🧪 [AutoRAG](https://github.com/Marker-Inc-Korea/AutoRAG): corpus + QA based pipeline optimization and leaderboard artifacts.
 - 📏 [Ragas](https://github.com/vibrantlabsai/ragas): evaluation vocabulary such as context precision, answer relevance, and faithfulness.
+- ✅ [DeepEval](https://github.com/confident-ai/deepeval): CI-friendly quality gates and regression testing patterns.
+- 🧰 [RAGFlow](https://github.com/infiniflow/ragflow): operator-facing RAG workflows and product experience references.
 - 🚀 [R2R](https://github.com/SciPhi-AI/R2R): production-facing query responses with context traces.
 
 ### ✨ Features
@@ -162,9 +178,12 @@ This repository is inspired by proven open-source RAG systems, while keeping the
 | 📚 Corpus | Load Chinese enterprise Markdown/TXT documents and produce manifests |
 | ✂️ Chunking | Chinese-aware sentence, recursive, and fixed-window splitting |
 | 🕸️ Graph Index | Build entity co-occurrence graphs over traceable chunks |
-| 🔎 Retrieval | Compare `naive`, `local`, `global`, `hybrid`, and `mix` modes |
-| 📊 Evaluation | Deterministic Ragas-style proxy metrics for CI-safe runs |
+| 🔎 Retrieval | Compare `naive`, `local`, `global`, `hybrid`, and `mix` modes with RRF over lexical / dense / graph signals |
+| 📊 Evaluation | Deterministic Ragas-style proxy metrics plus DeepEval-style quality gates |
 | 🧭 Optimization | AutoRAG-style config search and best-config selection |
+| 🧩 Provider Registry | Track optional LightRAG, AutoRAG, Ragas, DeepEval, and Neo4j integration paths |
+| 🧱 Persistent Store | JSONL index store for chunk, entity, and edge round trips |
+| 🔌 Query API | API-ready responses with citations, contexts, scores, and traces |
 | 🧾 Artifacts | Write chunks, entities, case results, leaderboard, summary, and reports |
 | 🤖 LLM Config | MiMo / OpenAI-compatible `.env` config with secret-safe inspection |
 
@@ -229,13 +248,14 @@ python -m unittest discover -s tests
 python -m cn_graphrag_eval_opt integrations
 python -m cn_graphrag_eval_opt llm-config --env .env.example
 python -m cn_graphrag_eval_opt optimize --config configs/default.toml
+python -m cn_graphrag_eval_opt quality-gate --summary runs/demo/summary.json --threshold retrieval_recall=0.8 --threshold faithfulness=0.7
 ```
 
 ### 🎯 Resume Framing
 
-> Built a Chinese enterprise GraphRAG evaluation and optimization toolkit inspired by LightRAG, Microsoft GraphRAG, AutoRAG, and Ragas. Implemented config-driven indexing, graph-enhanced retrieval, pipeline search, RAG metric evaluation, query tracing, MiMo/OpenAI-compatible LLM configuration, and reproducible experiment artifacts.
+> Built a Chinese enterprise GraphRAG evaluation and optimization toolkit inspired by LightRAG, Microsoft GraphRAG, AutoRAG, Ragas, DeepEval, and R2R. Implemented config-driven indexing, RRF graph-enhanced retrieval, pipeline search, RAG metric evaluation, CI quality gates, query tracing, MiMo/OpenAI-compatible LLM configuration, and reproducible experiment artifacts.
 
-See [docs/resume-framing.md](docs/resume-framing.md) for a longer interview narrative and resume bullet.
+See [`docs/resume-framing.md`](docs/resume-framing.md) for the longer project narrative.
 
 ## License
 

@@ -30,8 +30,8 @@ CodeGraph findings:
 
 Current implemented surface:
 
-- CLI commands for `init`, `dataset build`, `ingest`, `evaluate`, `optimize`, `query`, and
-  `integrations`.
+- CLI commands for `init`, `dataset build`, `ingest`, `evaluate`, `optimize`, `query`,
+  `quality-gate`, `integrations`, and `llm-config`.
 - Config-driven experiment grid in `configs/default.toml`.
 - Chinese-aware chunking, connector-backed corpus loading, bootstrap QA generation, hashing
   embeddings, entity graph indexing, RRF retrieval fusion, deterministic metric evaluation,
@@ -40,7 +40,8 @@ Current implemented surface:
 - Provider registry metadata for local baseline, LightRAG, AutoRAG, Ragas, DeepEval, and Neo4j
   integration paths.
 - Tests for chunking, pipeline behavior, provider metadata, retriever fusion, stores, evaluator
-  adapters, corpus connectors, service responses, documentation quality, and LLM config loading.
+  adapters, corpus connectors, service responses, quality-gate CLI behavior, documentation quality,
+  and LLM config loading.
 - Documentation for architecture, references, README quickstart, CI, and resume framing.
 
 ## LLM Configuration
@@ -74,7 +75,8 @@ the loaded configuration so developers can verify provider setup without leaking
 - `optimization.py`: AutoRAG-style pipeline grid runner and best-config selector.
 - `reporting.py`: JSON and Markdown report writer.
 - `adapters.py`: optional integration descriptors for LightRAG, AutoRAG, and Ragas.
-- `cli.py`: `ingest`, `evaluate`, `optimize`, `query`, `integrations`, and `llm-config` commands.
+- `cli.py`: `ingest`, `evaluate`, `optimize`, `query`, `quality-gate`, `integrations`, and
+  `llm-config` commands.
 
 Main remaining gaps:
 
@@ -95,6 +97,7 @@ Main remaining gaps:
 | [AutoRAG](https://github.com/Marker-Inc-Korea/AutoRAG) | Corpus + QA driven optimization, configurable module search, trial folders, leaderboards, deployable best pipeline. | Expand optimizer into repeatable experiment runs with comparable trials, best-config export, and module registry. |
 | [Ragas](https://github.com/vibrantlabsai/ragas) | RAG metric vocabulary and LLM-judged evaluation concepts. | Keep deterministic CI metrics while adding an optional adapter that maps local case data into Ragas datasets. |
 | [DeepEval](https://github.com/confident-ai/deepeval) | Test-style evaluation for LLM/RAG systems and CI-friendly quality gates. | Add threshold gates so retrieval/evaluation regressions can fail CI intentionally. |
+| [RAGFlow](https://github.com/infiniflow/ragflow) | Operator-facing RAG workflows, ingestion experience, and productized retrieval evaluation. | Keep CLI artifacts clear now, and leave room for future web/API workflow surfaces. |
 | [Neo4j GraphRAG Python](https://github.com/neo4j/neo4j-graphrag-python) | Production graph database integration, retrievers, vector search, and graph-backed retrieval patterns. | Design graph store interfaces so the current in-memory graph can later swap to Neo4j without changing callers. |
 | [Haystack](https://github.com/deepset-ai/haystack) | Component pipeline model, retrievers/readers/generators, production RAG framework conventions. | Add provider interfaces and small component contracts before adding large optional dependencies. |
 | [Pathway](https://github.com/pathwaycom/pathway) | Streaming/incremental data processing and live document indexing patterns. | Leave connector and incremental ingest seams for future document update workflows. |

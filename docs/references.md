@@ -11,6 +11,7 @@ enterprise GraphRAG evaluation toolkit.
 | AutoRAG | https://github.com/Marker-Inc-Korea/AutoRAG | Corpus + QA dataset workflow, pipeline/module optimization, trial folders, summary files, and leaderboard-style comparison. |
 | Ragas | https://github.com/vibrantlabsai/ragas | Metric vocabulary for context precision, context recall, answer relevancy, and faithfulness. The local baseline keeps deterministic proxy metrics for CI. |
 | DeepEval | https://github.com/confident-ai/deepeval | Test-like evaluation workflow, threshold gates, and CI-friendly quality checks for RAG systems. |
+| RAGFlow | https://github.com/infiniflow/ragflow | Product-oriented RAG workflow, document ingestion UX, and operator-facing evaluation experience for future UI/API work. |
 | Neo4j GraphRAG Python | https://github.com/neo4j/neo4j-graphrag-python | Graph database retriever abstractions, vector/graph retrieval patterns, and production graph store integration boundaries. |
 | Haystack | https://github.com/deepset-ai/haystack | Component pipeline conventions, retriever/generator separation, and production RAG application structure. |
 | Pathway | https://github.com/pathwaycom/pathway | Incremental and streaming data processing mindset for future live document indexing. |

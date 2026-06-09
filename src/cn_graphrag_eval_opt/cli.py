@@ -11,9 +11,10 @@ from cn_graphrag_eval_opt.config import DEFAULT_CONFIG_TEXT, load_project_config
 from cn_graphrag_eval_opt.corpus import load_corpus, load_qa_jsonl
 from cn_graphrag_eval_opt.datasets import build_synthetic_qa, write_qa_jsonl
 from cn_graphrag_eval_opt.evaluation import evaluate_cases
+from cn_graphrag_eval_opt.evaluator_adapters import check_quality_gate
 from cn_graphrag_eval_opt.graph import GraphIndex
 from cn_graphrag_eval_opt.llm import load_llm_config
-from cn_graphrag_eval_opt.models import PipelineConfig
+from cn_graphrag_eval_opt.models import EvaluationResult, PipelineConfig
 from cn_graphrag_eval_opt.optimization import run_optimization
 from cn_graphrag_eval_opt.pipeline import GraphRAGPipeline
 from cn_graphrag_eval_opt.reporting import write_json_artifacts, write_markdown_report
@@ -70,6 +71,18 @@ def main(argv: list[str] | None = None) -> None:
     llm_config = subparsers.add_parser("llm-config", help="Show redacted LLM environment config.")
     llm_config.add_argument("--env", default=".env")
 
+    quality_gate = subparsers.add_parser(
+        "quality-gate",
+        help="Fail CI when evaluation summary metrics miss required thresholds.",
+    )
+    quality_gate.add_argument("--summary", required=True)
+    quality_gate.add_argument(
+        "--threshold",
+        action="append",
+        required=True,
+        help="Metric threshold in metric=min_score form, e.g. retrieval_recall=0.90.",
+    )
+
     args = parser.parse_args(argv)
     if args.command == "init":
         _cmd_init(args)
@@ -87,6 +100,8 @@ def main(argv: list[str] | None = None) -> None:
         _cmd_integrations()
     elif args.command == "llm-config":
         _cmd_llm_config(args)
+    elif args.command == "quality-gate":
+        _cmd_quality_gate(args)
 
 
 def _cmd_init(args: argparse.Namespace) -> None:
@@ -183,3 +198,45 @@ def _cmd_integrations() -> None:
 def _cmd_llm_config(args: argparse.Namespace) -> None:
     config = load_llm_config(args.env)
     print(json.dumps(config.to_safe_dict(), ensure_ascii=False, indent=2))
+
+
+def _cmd_quality_gate(args: argparse.Namespace) -> None:
+    metrics = _load_summary_metrics(args.summary)
+    thresholds = _parse_thresholds(args.threshold)
+    gate = check_quality_gate(EvaluationResult(cases=[], aggregate=metrics), thresholds)
+    print(json.dumps(asdict(gate), ensure_ascii=False, indent=2))
+    if not gate.passed:
+        raise SystemExit(1)
+
+
+def _load_summary_metrics(path: str | Path) -> dict[str, float]:
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    if isinstance(payload.get("aggregate"), dict):
+        return _numeric_metrics(payload["aggregate"])
+    best_summary = payload.get("best_summary")
+    if isinstance(best_summary, dict) and isinstance(best_summary.get("metrics"), dict):
+        return _numeric_metrics(best_summary["metrics"])
+    raise ValueError("Summary must contain aggregate metrics or best_summary.metrics")
+
+
+def _numeric_metrics(metrics: dict[str, object]) -> dict[str, float]:
+    numeric: dict[str, float] = {}
+    for key, value in metrics.items():
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, (int, float)):
+            numeric[key] = float(value)
+    return numeric
+
+
+def _parse_thresholds(items: list[str]) -> dict[str, float]:
+    thresholds: dict[str, float] = {}
+    for item in items:
+        if "=" not in item:
+            raise ValueError(f"Invalid threshold {item!r}: expected metric=min_score")
+        metric, raw_value = item.split("=", 1)
+        metric = metric.strip()
+        if not metric:
+            raise ValueError(f"Invalid threshold {item!r}: metric name is empty")
+        thresholds[metric] = float(raw_value.strip())
+    return thresholds

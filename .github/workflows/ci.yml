@@ -20,3 +20,5 @@ jobs:
         run: python -m unittest discover -s tests
       - name: Run default optimization smoke test
         run: python -m cn_graphrag_eval_opt optimize --config configs/default.toml
+      - name: Run retrieval quality gate
+        run: python -m cn_graphrag_eval_opt quality-gate --summary runs/demo/summary.json --threshold retrieval_recall=0.8 --threshold faithfulness=0.7

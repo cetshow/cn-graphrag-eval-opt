@@ -13,6 +13,7 @@ flowchart LR
     E --> F["RAG evaluator"]
     F --> G["Pipeline optimizer"]
     G --> H["Trial artifacts"]
+    H --> J["Quality gate"]
     D --> I["Query service"]
 ```
 
@@ -22,6 +23,7 @@ flowchart LR
 - LightRAG: lightweight graph retrieval modes for local/global/hybrid reasoning.
 - AutoRAG: trial-oriented configuration search and leaderboard output.
 - Ragas: metric vocabulary for judging context and answer quality.
+- DeepEval: CI-friendly quality gates for retrieval and answer regressions.
 - R2R: query responses include context traces rather than only generated text.
 
 ## Extension Points
@@ -30,4 +32,5 @@ flowchart LR
 - Persist indexes to SQLite, NetworkX, Neo4j, Qdrant, or another store behind `GraphIndex`.
 - Replace deterministic answer synthesis with an LLM-backed generator.
 - Swap proxy metrics for Ragas model-backed metrics when credentials are available.
+- Tune `quality-gate` thresholds as the corpus and QA benchmark grow.
 - Expose `QueryService` through FastAPI for a production-style HTTP surface.
