@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from dataclasses import asdict
 from pathlib import Path
 
@@ -146,13 +147,13 @@ def _cmd_init(args: argparse.Namespace) -> None:
     if output.exists():
         raise FileExistsError(f"Refusing to overwrite existing config: {output}")
     output.write_text(DEFAULT_CONFIG_TEXT, encoding="utf-8")
-    print(json.dumps({"config": str(output)}, ensure_ascii=False))
+    _print_json({"config": str(output)})
 
 
 def _cmd_ingest(args: argparse.Namespace) -> None:
     documents = load_corpus(args.corpus)
     chunks = ChineseTextSplitter(args.chunk_size, args.overlap).split_many(documents)
-    print(json.dumps({"documents": len(documents), "chunks": len(chunks)}, ensure_ascii=False))
+    _print_json({"documents": len(documents), "chunks": len(chunks)})
 
 
 def _cmd_evaluate(args: argparse.Namespace) -> None:
@@ -172,14 +173,14 @@ def _cmd_evaluate(args: argparse.Namespace) -> None:
         json.dumps(asdict(result), ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    print(json.dumps(result.aggregate, ensure_ascii=False))
+    _print_json(result.aggregate)
 
 
 def _cmd_dataset(args: argparse.Namespace) -> None:
     documents = load_corpus(args.corpus)
     cases = build_synthetic_qa(documents, cases_per_document=args.cases_per_document)
     output = write_qa_jsonl(cases, args.out)
-    print(json.dumps({"qa_cases": len(cases), "path": str(output)}, ensure_ascii=False))
+    _print_json({"qa_cases": len(cases), "path": str(output)})
 
 
 def _cmd_optimize(args: argparse.Namespace) -> None:
@@ -192,12 +193,7 @@ def _cmd_optimize(args: argparse.Namespace) -> None:
                 out_dir=Path(args.out) if args.out else None,
             )
         result = GraphRAGPipeline(config).run_optimization()
-        print(
-            json.dumps(
-                {"best_config": asdict(result.best_config), "out_dir": str(config.corpus.out_dir)},
-                ensure_ascii=False,
-            )
-        )
+        _print_json({"best_config": asdict(result.best_config), "out_dir": str(config.corpus.out_dir)})
         return
 
     if not args.corpus or not args.qa or not args.out:
@@ -208,12 +204,7 @@ def _cmd_optimize(args: argparse.Namespace) -> None:
     out_dir = Path(args.out)
     write_json_artifacts(result, out_dir)
     report_path = write_markdown_report(result, out_dir / "report.md")
-    print(
-        json.dumps(
-            {"best_config": asdict(result.best_config), "report": str(report_path)},
-            ensure_ascii=False,
-        )
-    )
+    _print_json({"best_config": asdict(result.best_config), "report": str(report_path)})
 
 
 def _cmd_query(args: argparse.Namespace) -> None:
@@ -224,7 +215,7 @@ def _cmd_query(args: argparse.Namespace) -> None:
         query_mode=args.query_mode,
     )
     response = QueryService.from_paths(args.corpus, config).query(args.question)
-    print(json.dumps(response, ensure_ascii=False, indent=2))
+    _print_json(response, indent=2)
 
 
 def _cmd_ask(args: argparse.Namespace) -> None:
@@ -237,7 +228,7 @@ def _cmd_ask(args: argparse.Namespace) -> None:
     service = QueryService.from_paths(args.corpus, config)
     if args.offline:
         response = service.query_response(args.question, answer_mode="extractive")
-        print(json.dumps(response.to_dict(), ensure_ascii=False, indent=2))
+        _print_json(response.to_dict(), indent=2)
         return
 
     try:
@@ -255,9 +246,9 @@ def _cmd_ask(args: argparse.Namespace) -> None:
             llm_model=llm_config.model,
         )
     except LLMError as error:
-        print(json.dumps({"ok": False, "error": str(error)}, ensure_ascii=False, indent=2))
+        _print_json({"ok": False, "error": str(error)}, indent=2)
         raise SystemExit(2) from error
-    print(json.dumps(response.to_dict(), ensure_ascii=False, indent=2))
+    _print_json(response.to_dict(), indent=2)
 
 
 def _cmd_doctor(args: argparse.Namespace) -> None:
@@ -273,43 +264,40 @@ def _cmd_doctor(args: argparse.Namespace) -> None:
         question=args.question,
         config=config,
     )
-    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    _print_json(payload, indent=2)
 
 
 def _cmd_integrations() -> None:
     payload = [asdict(status) for status in optional_integrations()]
-    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    _print_json(payload, indent=2)
 
 
 def _cmd_llm_config(args: argparse.Namespace) -> None:
     config = load_llm_config(args.env)
-    print(json.dumps(config.to_safe_dict(), ensure_ascii=False, indent=2))
+    _print_json(config.to_safe_dict(), indent=2)
 
 
 def _cmd_llm_smoke(args: argparse.Namespace) -> None:
     config = load_llm_config(args.env)
     if args.dry_run:
-        print(json.dumps(build_llm_request_plan(config, args.prompt), ensure_ascii=False, indent=2))
+        _print_json(build_llm_request_plan(config, args.prompt), indent=2)
         return
     try:
         response = OpenAICompatibleChatClient(config).chat(
             [{"role": "user", "content": args.prompt}]
         )
     except LLMError as error:
-        print(json.dumps({"ok": False, "error": str(error)}, ensure_ascii=False, indent=2))
+        _print_json({"ok": False, "error": str(error)}, indent=2)
         raise SystemExit(2) from error
-    print(
-        json.dumps(
-            {
-                "ok": True,
-                "model": response.model,
-                "finish_reason": response.finish_reason,
-                "usage": response.usage,
-                "content": response.content,
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
+    _print_json(
+        {
+            "ok": True,
+            "model": response.model,
+            "finish_reason": response.finish_reason,
+            "usage": response.usage,
+            "content": response.content,
+        },
+        indent=2,
     )
 
 
@@ -317,7 +305,7 @@ def _cmd_quality_gate(args: argparse.Namespace) -> None:
     metrics = _load_summary_metrics(args.summary)
     thresholds = _parse_thresholds(args.threshold)
     gate = check_quality_gate(EvaluationResult(cases=[], aggregate=metrics), thresholds)
-    print(json.dumps(asdict(gate), ensure_ascii=False, indent=2))
+    _print_json(asdict(gate), indent=2)
     if not gate.passed:
         raise SystemExit(1)
 
@@ -353,3 +341,23 @@ def _parse_thresholds(items: list[str]) -> dict[str, float]:
             raise ValueError(f"Invalid threshold {item!r}: metric name is empty")
         thresholds[metric] = float(raw_value.strip())
     return thresholds
+
+
+def _print_json(payload: object, *, indent: int | None = None) -> None:
+    print(_json_text(payload, indent=indent, output_encoding=getattr(sys.stdout, "encoding", None)))
+
+
+def _json_text(
+    payload: object,
+    *,
+    indent: int | None = None,
+    output_encoding: str | None = None,
+) -> str:
+    text = json.dumps(payload, ensure_ascii=False, indent=indent)
+    if not output_encoding:
+        return text
+    try:
+        text.encode(output_encoding)
+        return text
+    except UnicodeEncodeError:
+        return json.dumps(payload, ensure_ascii=True, indent=indent)
