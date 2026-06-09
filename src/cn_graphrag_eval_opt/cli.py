@@ -12,6 +12,7 @@ from cn_graphrag_eval_opt.corpus import load_corpus, load_qa_jsonl
 from cn_graphrag_eval_opt.datasets import build_synthetic_qa, write_qa_jsonl
 from cn_graphrag_eval_opt.evaluation import evaluate_cases
 from cn_graphrag_eval_opt.graph import GraphIndex
+from cn_graphrag_eval_opt.llm import load_llm_config
 from cn_graphrag_eval_opt.models import PipelineConfig
 from cn_graphrag_eval_opt.optimization import run_optimization
 from cn_graphrag_eval_opt.pipeline import GraphRAGPipeline
@@ -66,6 +67,9 @@ def main(argv: list[str] | None = None) -> None:
 
     integrations = subparsers.add_parser("integrations", help="Show optional upstream adapters.")
 
+    llm_config = subparsers.add_parser("llm-config", help="Show redacted LLM environment config.")
+    llm_config.add_argument("--env", default=".env")
+
     args = parser.parse_args(argv)
     if args.command == "init":
         _cmd_init(args)
@@ -81,6 +85,8 @@ def main(argv: list[str] | None = None) -> None:
         _cmd_query(args)
     elif args.command == "integrations":
         _cmd_integrations()
+    elif args.command == "llm-config":
+        _cmd_llm_config(args)
 
 
 def _cmd_init(args: argparse.Namespace) -> None:
@@ -172,3 +178,8 @@ def _cmd_query(args: argparse.Namespace) -> None:
 def _cmd_integrations() -> None:
     payload = [asdict(status) for status in optional_integrations()]
     print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+def _cmd_llm_config(args: argparse.Namespace) -> None:
+    config = load_llm_config(args.env)
+    print(json.dumps(config.to_safe_dict(), ensure_ascii=False, indent=2))

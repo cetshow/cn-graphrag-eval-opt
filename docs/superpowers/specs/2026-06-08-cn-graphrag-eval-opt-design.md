@@ -33,21 +33,58 @@ Current implemented surface:
 - CLI commands for `init`, `dataset build`, `ingest`, `evaluate`, `optimize`, `query`, and
   `integrations`.
 - Config-driven experiment grid in `configs/default.toml`.
-- Chinese-aware chunking, corpus loading, bootstrap QA generation, hashing embeddings, graph index,
-  graph-enhanced retrieval modes, deterministic metric evaluation, optimization ranking, report
-  writing, and a query service facade.
-- Tests for chunking, pipeline behavior, repository upgrade surface, and CLI-adjacent workflows.
-- Documentation for architecture, references, README quickstart, and CI.
+- Chinese-aware chunking, connector-backed corpus loading, bootstrap QA generation, hashing
+  embeddings, entity graph indexing, RRF retrieval fusion, deterministic metric evaluation,
+  optimization ranking, report writing, persistent JSONL index storage, evaluator data adapters,
+  API-ready query response models, and a query service facade.
+- Provider registry metadata for local baseline, LightRAG, AutoRAG, Ragas, DeepEval, and Neo4j
+  integration paths.
+- Tests for chunking, pipeline behavior, provider metadata, retriever fusion, stores, evaluator
+  adapters, corpus connectors, service responses, documentation quality, and LLM config loading.
+- Documentation for architecture, references, README quickstart, CI, and resume framing.
 
-Main gaps:
+## LLM Configuration
 
-- Retriever fusion is simple weighted scoring rather than a reusable rank-fusion subsystem.
-- Storage is artifact-oriented JSON/JSONL, with no persistent vector/graph store abstraction.
-- Optional integrations are status descriptors, not runtime provider interfaces.
-- Evaluation metrics are deterministic proxies only; real Ragas/DeepEval adapters are not executable.
-- Dataset and connector support is intentionally small.
-- Query service is a Python facade, not an HTTP API.
-- README and docs describe the project, but the second-stage competitive roadmap was not yet explicit.
+The deterministic baseline stays usable without credentials, but the product now exposes a standard
+LLM configuration surface for model-backed generation and evaluator integrations. `.env.example`
+documents the required variables, while `.env` is local-only and ignored by git.
+
+The first configured provider is MiMo through its OpenAI-compatible Token Plan endpoint:
+
+- `LLM_PROVIDER=mimo`
+- `LLM_API_PROTOCOL=openai`
+- `LLM_BASE_URL=https://token-plan-cn.xiaomimimo.com/v1`
+- `LLM_MODEL=mimo-v2.5-pro`
+- `ANTHROPIC_BASE_URL` is optional for the Anthropic-compatible endpoint from the same plan.
+
+Runtime parameters include `LLM_TEMPERATURE`, `LLM_TOP_P`, `LLM_MAX_TOKENS`,
+`LLM_TIMEOUT_SECONDS`, and `LLM_RETRY_COUNT`. The CLI exposes `llm-config` to print a redacted view of
+the loaded configuration so developers can verify provider setup without leaking API keys.
+
+## Components
+
+- `models.py`: dataclasses for documents, chunks, QA cases, retrieval results, metric summaries, and
+  pipeline configs.
+- `chunking.py`: Chinese sentence and recursive chunk splitters with overlap.
+- `corpus.py`: Markdown/TXT corpus loader and JSONL QA loader.
+- `graph.py`: lightweight entity extraction and co-occurrence graph index.
+- `retrieval.py`: lexical and graph-enhanced retrievers with LightRAG-style query modes.
+- `evaluation.py`: Ragas-style deterministic retrieval/generation proxy metrics.
+- `llm.py`: `.env` loader and OpenAI-compatible LLM runtime configuration.
+- `optimization.py`: AutoRAG-style pipeline grid runner and best-config selector.
+- `reporting.py`: JSON and Markdown report writer.
+- `adapters.py`: optional integration descriptors for LightRAG, AutoRAG, and Ragas.
+- `cli.py`: `ingest`, `evaluate`, `optimize`, `query`, `integrations`, and `llm-config` commands.
+
+Main remaining gaps:
+
+- Model-backed generation and real Ragas/DeepEval scoring are not enabled by default because the
+  baseline must stay CI-safe without credentials.
+- Dataset and connector support is still intentionally small; HTML/PDF/web connectors remain future
+  extension points.
+- Query service is an API-ready Python facade, not a FastAPI/HTTP service.
+- Incremental indexing and external graph/vector stores are designed as extension points, not yet
+  production services.
 
 ## Competitive Reference Projects
 
