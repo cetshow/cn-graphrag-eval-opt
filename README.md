@@ -85,6 +85,14 @@ python -m cn_graphrag_eval_opt llm-smoke --env .env --dry-run
 python -m cn_graphrag_eval_opt llm-smoke --env .env --prompt "请用一句话介绍 MiMo。"
 ```
 
+在真实联网前，可以先运行非联网产品诊断：
+
+```bash
+python -m cn_graphrag_eval_opt doctor --corpus examples/corpus --env .env.example --question "哪个部门每月复核高危权限？"
+```
+
+`doctor` 会检查 corpus 加载、分块数量、检索结果、离线回答审计和 MiMo 脱敏请求计划，并用 `offline_ready` / `online_ready` 标记当前可用状态。
+
 ### 使用方式
 
 运行默认 GraphRAG 优化实验：
@@ -141,6 +149,7 @@ runs/demo/
 ```bash
 python -m unittest discover -s tests
 python -m cn_graphrag_eval_opt integrations
+python -m cn_graphrag_eval_opt doctor --corpus examples/corpus --env .env.example --question "哪个部门每月复核高危权限？"
 python -m cn_graphrag_eval_opt llm-config --env .env.example
 python -m cn_graphrag_eval_opt llm-smoke --env .env.example --dry-run
 python -m cn_graphrag_eval_opt optimize --config configs/default.toml
@@ -217,6 +226,14 @@ python -m cn_graphrag_eval_opt llm-smoke --env .env --dry-run
 python -m cn_graphrag_eval_opt llm-smoke --env .env --prompt "Introduce MiMo in one sentence."
 ```
 
+Before making a live network call, run the non-network product diagnostics:
+
+```bash
+python -m cn_graphrag_eval_opt doctor --corpus examples/corpus --env .env.example --question "哪个部门每月复核高危权限？"
+```
+
+`doctor` checks corpus loading, chunk counts, retrieval, offline answer audit, and the redacted MiMo request plan, then reports `offline_ready` and `online_ready`.
+
 ### Usage
 
 ```bash
@@ -234,6 +251,7 @@ The `ask` response trace includes `grounded`, `citation_coverage`, `cited_chunk_
 ```bash
 python -m unittest discover -s tests
 python -m cn_graphrag_eval_opt integrations
+python -m cn_graphrag_eval_opt doctor --corpus examples/corpus --env .env.example --question "哪个部门每月复核高危权限？"
 python -m cn_graphrag_eval_opt llm-config --env .env.example
 python -m cn_graphrag_eval_opt llm-smoke --env .env.example --dry-run
 python -m cn_graphrag_eval_opt optimize --config configs/default.toml

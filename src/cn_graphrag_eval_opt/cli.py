@@ -10,6 +10,7 @@ from cn_graphrag_eval_opt.chunking import ChineseTextSplitter
 from cn_graphrag_eval_opt.config import DEFAULT_CONFIG_TEXT, load_project_config
 from cn_graphrag_eval_opt.corpus import load_corpus, load_qa_jsonl
 from cn_graphrag_eval_opt.datasets import build_synthetic_qa, write_qa_jsonl
+from cn_graphrag_eval_opt.diagnostics import run_product_doctor
 from cn_graphrag_eval_opt.evaluation import evaluate_cases
 from cn_graphrag_eval_opt.evaluator_adapters import check_quality_gate
 from cn_graphrag_eval_opt.graph import GraphIndex
@@ -82,6 +83,15 @@ def main(argv: list[str] | None = None) -> None:
     ask.add_argument("--overlap", type=int, default=16)
     ask.add_argument("--top-k", type=int, default=3)
 
+    doctor = subparsers.add_parser("doctor", help="Run non-network product readiness diagnostics.")
+    doctor.add_argument("--corpus", required=True)
+    doctor.add_argument("--env", default=".env")
+    doctor.add_argument("--question", default="哪个部门每月复核高危权限？")
+    doctor.add_argument("--query-mode", default="mix")
+    doctor.add_argument("--chunk-size", type=int, default=128)
+    doctor.add_argument("--overlap", type=int, default=16)
+    doctor.add_argument("--top-k", type=int, default=3)
+
     integrations = subparsers.add_parser("integrations", help="Show optional upstream adapters.")
 
     llm_config = subparsers.add_parser("llm-config", help="Show redacted LLM environment config.")
@@ -119,6 +129,8 @@ def main(argv: list[str] | None = None) -> None:
         _cmd_query(args)
     elif args.command == "ask":
         _cmd_ask(args)
+    elif args.command == "doctor":
+        _cmd_doctor(args)
     elif args.command == "integrations":
         _cmd_integrations()
     elif args.command == "llm-config":
@@ -246,6 +258,22 @@ def _cmd_ask(args: argparse.Namespace) -> None:
         print(json.dumps({"ok": False, "error": str(error)}, ensure_ascii=False, indent=2))
         raise SystemExit(2) from error
     print(json.dumps(response.to_dict(), ensure_ascii=False, indent=2))
+
+
+def _cmd_doctor(args: argparse.Namespace) -> None:
+    config = PipelineConfig(
+        chunk_size=args.chunk_size,
+        overlap=args.overlap,
+        top_k=args.top_k,
+        query_mode=args.query_mode,
+    )
+    payload = run_product_doctor(
+        corpus_path=args.corpus,
+        env_path=args.env,
+        question=args.question,
+        config=config,
+    )
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
 
 
 def _cmd_integrations() -> None:

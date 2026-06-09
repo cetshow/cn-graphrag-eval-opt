@@ -21,6 +21,7 @@ class DocumentationQualityTest(unittest.TestCase):
         self.assertIn("MiMo", readme)
         self.assertIn("回答审计", readme)
         self.assertIn("Answer Audit", readme)
+        self.assertIn("doctor", readme)
         self.assertNotIn("Resume Framing", readme)
         self.assertNotIn("简历", readme)
         self.assertNotIn("docs/resume-framing.md", readme)
