@@ -73,7 +73,10 @@ class PipelineTest(unittest.TestCase):
             self.assertEqual(trial.best_config.query_mode, "mix")
             self.assertGreaterEqual(trial.best_summary.metrics["retrieval_recall"], 0.99)
             report_path = write_markdown_report(trial, root / "report.md")
-            self.assertIn("Best Configuration", report_path.read_text(encoding="utf-8"))
+            report = report_path.read_text(encoding="utf-8")
+            self.assertIn("Best Configuration", report)
+            self.assertIn("Implementation Notes", report)
+            self.assertNotIn("Resume Notes", report)
 
             splitter = ChineseTextSplitter(chunk_size=48, overlap=6)
             chunks = splitter.split_many(documents)

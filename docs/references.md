@@ -20,5 +20,5 @@ enterprise GraphRAG evaluation toolkit.
 ## License Boundary
 
 The repository does not copy source files from reference projects. MIT and Apache-2.0 projects can be
-compatible with this repository, but resume-quality work should demonstrate original implementation,
+compatible with this repository, but production-quality work should demonstrate original implementation,
 clear attribution, and optional adapters rather than pasted upstream internals.

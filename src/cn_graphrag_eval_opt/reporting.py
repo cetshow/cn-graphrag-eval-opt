@@ -73,11 +73,11 @@ def write_markdown_report(result: OptimizationResult, path: str | Path) -> Path:
     lines.extend(
         [
             "",
-            "## Resume Notes",
+            "## Implementation Notes",
             "",
             "- LightRAG-style query modes compare lexical, local entity, global graph neighbor, hybrid, and mix retrieval.",
             "- AutoRAG-style search ranks multiple pipeline configurations on the same Chinese corpus and QA set.",
-            "- Ragas-style proxy metrics make the baseline reproducible without remote LLM calls.",
+            "- Ragas-style proxy metrics and quality gates make the baseline reproducible without remote LLM calls.",
         ]
     )
     report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")

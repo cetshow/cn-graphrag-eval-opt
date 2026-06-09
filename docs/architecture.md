@@ -10,11 +10,13 @@ flowchart LR
     B --> C["Chinese chunker"]
     C --> D["Entity graph index"]
     D --> E["GraphRAG retriever"]
+    E --> K["MiMo grounded answerer"]
     E --> F["RAG evaluator"]
     F --> G["Pipeline optimizer"]
     G --> H["Trial artifacts"]
     H --> J["Quality gate"]
-    D --> I["Query service"]
+    K --> L["Answer audit"]
+    L --> I["Query service"]
 ```
 
 ## Design References
@@ -24,13 +26,15 @@ flowchart LR
 - AutoRAG: trial-oriented configuration search and leaderboard output.
 - Ragas: metric vocabulary for judging context and answer quality.
 - DeepEval: CI-friendly quality gates for retrieval and answer regressions.
-- R2R: query responses include context traces rather than only generated text.
+- MiMo: OpenAI-compatible chat completions for grounded Chinese enterprise answers.
+- RAGFlow: grounded citations and operator-visible references reduce hallucination risk.
+- R2R: query responses include context traces and observability signals rather than only generated text.
 
 ## Extension Points
 
 - Replace lexical retrieval with dense embeddings or BM25 in `retrieval.py`.
 - Persist indexes to SQLite, NetworkX, Neo4j, Qdrant, or another store behind `GraphIndex`.
-- Replace deterministic answer synthesis with an LLM-backed generator.
+- Extend the MiMo answerer with streaming output, structured response parsing, and stricter citation policies.
 - Swap proxy metrics for Ragas model-backed metrics when credentials are available.
 - Tune `quality-gate` thresholds as the corpus and QA benchmark grow.
 - Expose `QueryService` through FastAPI for a production-style HTTP surface.

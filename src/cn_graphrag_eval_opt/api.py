@@ -27,6 +27,14 @@ class QueryTrace:
     query_mode: str
     top_k: int
     retrieved_count: int
+    answer_mode: str = "extractive"
+    llm_provider: str | None = None
+    llm_model: str | None = None
+    grounded: bool = True
+    citation_coverage: float = 1.0
+    cited_chunk_ids: list[str] = field(default_factory=list)
+    missing_citation_ids: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
