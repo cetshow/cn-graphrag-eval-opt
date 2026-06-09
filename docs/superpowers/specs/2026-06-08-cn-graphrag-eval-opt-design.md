@@ -28,6 +28,24 @@ The baseline avoids remote LLM calls so tests and demos are deterministic. Faith
 use transparent lexical proxies, while the adapter layer documents where real Ragas/LightRAG/AutoRAG
 calls plug in.
 
+## LLM Configuration
+
+The deterministic baseline stays usable without credentials, but the product now exposes a standard
+LLM configuration surface for model-backed generation and evaluator integrations. `.env.example`
+documents the required variables, while `.env` is local-only and ignored by git.
+
+The first configured provider is MiMo through its OpenAI-compatible Token Plan endpoint:
+
+- `LLM_PROVIDER=mimo`
+- `LLM_API_PROTOCOL=openai`
+- `LLM_BASE_URL=https://token-plan-cn.xiaomimimo.com/v1`
+- `LLM_MODEL=mimo-v2.5-pro`
+- `ANTHROPIC_BASE_URL` is optional for the Anthropic-compatible endpoint from the same plan.
+
+Runtime parameters include `LLM_TEMPERATURE`, `LLM_TOP_P`, `LLM_MAX_TOKENS`,
+`LLM_TIMEOUT_SECONDS`, and `LLM_RETRY_COUNT`. The CLI exposes `llm-config` to print a redacted view of
+the loaded configuration so developers can verify provider setup without leaking API keys.
+
 ## Components
 
 - `models.py`: dataclasses for documents, chunks, QA cases, retrieval results, metric summaries, and
@@ -37,10 +55,11 @@ calls plug in.
 - `graph.py`: lightweight entity extraction and co-occurrence graph index.
 - `retrieval.py`: lexical and graph-enhanced retrievers with LightRAG-style query modes.
 - `evaluation.py`: Ragas-style deterministic retrieval/generation proxy metrics.
+- `llm.py`: `.env` loader and OpenAI-compatible LLM runtime configuration.
 - `optimization.py`: AutoRAG-style pipeline grid runner and best-config selector.
 - `reporting.py`: JSON and Markdown report writer.
 - `adapters.py`: optional integration descriptors for LightRAG, AutoRAG, and Ragas.
-- `cli.py`: `ingest`, `evaluate`, and `optimize` commands.
+- `cli.py`: `ingest`, `evaluate`, `optimize`, `query`, `integrations`, and `llm-config` commands.
 
 ## Data Flow
 

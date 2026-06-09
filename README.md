@@ -43,6 +43,7 @@ cn-graphrag-eval-opt/
     graph.py                           # Entity graph index
     retrieval.py                       # GraphRAG retriever
     evaluation.py                      # RAG metrics and answer synthesis
+    llm.py                             # LLM environment config loader
     optimization.py                    # Pipeline search
     pipeline.py                        # Ingest -> index -> evaluate orchestration
     reporting.py                       # Trial artifact writers
@@ -100,6 +101,34 @@ Create a starter config:
 python -m cn_graphrag_eval_opt init --out graphrag.toml
 ```
 
+## LLM Configuration
+
+The default pipeline remains deterministic and does not require model credentials. For model-backed
+generation or future Ragas/DeepEval runs, copy `.env.example` to `.env` and fill in your provider key.
+`.env` is ignored by git; only `.env.example` is committed.
+
+MiMo Token Plan example:
+
+```env
+LLM_PROVIDER=mimo
+LLM_API_PROTOCOL=openai
+LLM_BASE_URL=https://token-plan-cn.xiaomimimo.com/v1
+LLM_API_KEY=replace-with-your-dedicated-api-key
+LLM_MODEL=mimo-v2.5-pro
+LLM_TEMPERATURE=0.2
+LLM_TOP_P=1.0
+LLM_MAX_TOKENS=2048
+LLM_TIMEOUT_SECONDS=60
+LLM_RETRY_COUNT=2
+ANTHROPIC_BASE_URL=https://token-plan-sgp.xiaomimimo.com/anthropic
+```
+
+Check the loaded configuration without printing secrets:
+
+```bash
+python -m cn_graphrag_eval_opt llm-config --env .env
+```
+
 ## Configuration
 
 The default experiment grid lives in `configs/default.toml`:
@@ -137,6 +166,7 @@ When `ragas` is installed, the adapter layer maps these names to Ragas concepts:
 ```bash
 python -m unittest discover -s tests
 python -m cn_graphrag_eval_opt integrations
+python -m cn_graphrag_eval_opt llm-config --env .env.example
 python -m cn_graphrag_eval_opt optimize --config configs/default.toml
 ```
 
