@@ -27,6 +27,7 @@ Language: [中文](#中文说明) | [English](#english)
 | RRF 融合 | 融合 lexical、dense、local graph、global graph 信号 |
 | MiMo LLM | 通过 OpenAI-compatible `/chat/completions` 调用 MiMo |
 | Query API | 输出 answer、contexts、citations、scores、trace、LLM metadata |
+| 回答审计 | 校验 LLM 回答中的 `chunk_id` 引用，输出 grounded、citation coverage 和 warnings |
 | 评测优化 | 运行多 pipeline config，输出 leaderboard、best config 和 report |
 | 质量门禁 | 用 `quality-gate` 在 CI 中阻断低质量检索结果 |
 | 可选生态 | 通过 provider registry 描述 LightRAG、AutoRAG、Ragas、DeepEval、Neo4j |
@@ -107,6 +108,8 @@ python -m cn_graphrag_eval_opt ask "哪个部门每月复核高危权限？" --c
 python -m cn_graphrag_eval_opt ask "哪个部门每月复核高危权限？" --corpus examples/corpus --env .env
 ```
 
+`ask` 的 JSON trace 会包含 `grounded`、`citation_coverage`、`cited_chunk_ids`、`missing_citation_ids` 和 `warnings`，用于检查回答是否引用了本次检索上下文。
+
 运行 CI 质量门禁：
 
 ```bash
@@ -158,6 +161,7 @@ The project follows engineering ideas from Microsoft GraphRAG, LightRAG, AutoRAG
 | Fusion | Reciprocal Rank Fusion over lexical, dense, local graph, and global graph signals |
 | MiMo LLM | OpenAI-compatible `/chat/completions` client with retry support |
 | Query API | Answers with contexts, citations, scores, traces, and LLM metadata |
+| Answer Audit | Validates `chunk_id` citations in LLM answers and reports grounded, citation coverage, and warnings |
 | Evaluation | Deterministic Ragas-style proxy metrics for CI-safe runs |
 | Optimization | AutoRAG-style config search, leaderboard, best config, and reports |
 | Quality Gate | Threshold-based CI gate over retrieval/evaluation metrics |
@@ -216,6 +220,8 @@ python -m cn_graphrag_eval_opt ask "哪个部门每月复核高危权限？" --c
 python -m cn_graphrag_eval_opt ask "哪个部门每月复核高危权限？" --corpus examples/corpus --env .env
 python -m cn_graphrag_eval_opt quality-gate --summary runs/demo/summary.json --threshold retrieval_recall=0.8 --threshold faithfulness=0.7
 ```
+
+The `ask` response trace includes `grounded`, `citation_coverage`, `cited_chunk_ids`, `missing_citation_ids`, and `warnings` so callers can inspect whether an LLM answer cites the retrieved context.
 
 ### Development
 

@@ -15,7 +15,8 @@ flowchart LR
     F --> G["Pipeline optimizer"]
     G --> H["Trial artifacts"]
     H --> J["Quality gate"]
-    K --> I["Query service"]
+    K --> L["Answer audit"]
+    L --> I["Query service"]
 ```
 
 ## Design References
@@ -26,13 +27,14 @@ flowchart LR
 - Ragas: metric vocabulary for judging context and answer quality.
 - DeepEval: CI-friendly quality gates for retrieval and answer regressions.
 - MiMo: OpenAI-compatible chat completions for grounded Chinese enterprise answers.
-- R2R: query responses include context traces rather than only generated text.
+- RAGFlow: grounded citations and operator-visible references reduce hallucination risk.
+- R2R: query responses include context traces and observability signals rather than only generated text.
 
 ## Extension Points
 
 - Replace lexical retrieval with dense embeddings or BM25 in `retrieval.py`.
 - Persist indexes to SQLite, NetworkX, Neo4j, Qdrant, or another store behind `GraphIndex`.
-- Extend the MiMo answerer with streaming output and structured response parsing.
+- Extend the MiMo answerer with streaming output, structured response parsing, and stricter citation policies.
 - Swap proxy metrics for Ragas model-backed metrics when credentials are available.
 - Tune `quality-gate` thresholds as the corpus and QA benchmark grow.
 - Expose `QueryService` through FastAPI for a production-style HTTP surface.
