@@ -12,9 +12,21 @@ code, keep optional adapters for upstream ecosystems, and document license-sensi
 
 ## Source Audit Status
 
-CodeGraph was requested for source review, but the local CodeGraph service reported that this project
-was not initialized and the `codegraph` CLI was unavailable in the workspace shell. Until the index is
-available, the repository has been audited through direct source reads.
+CodeGraph has been initialized and used for the source audit. The indexed baseline contains 23 files,
+265 nodes, and 530 edges across the Python package, tests, and CI workflow. CodeGraph was used to read
+the project structure and the main CLI -> pipeline -> chunk/index/retrieve/evaluate/report flow, plus
+the supporting config, chunking, dataset, embedding, text, adapter, reporting, storage, and test code.
+
+CodeGraph findings:
+
+- `GraphRAGPipeline.run_optimization()` loads corpus and QA data, runs the optimizer, reevaluates the
+  best config, and writes trial artifacts.
+- `evaluate_cases()` is a central dependency used by CLI evaluation, optimization, pipeline execution,
+  and tests.
+- `write_trial_artifacts()` is the artifact boundary for reproducibility and should stay heavily
+  covered by integration tests.
+- `load_project_config()`, `build_synthetic_qa()`, and `optional_integrations()` are important CLI
+  entry dependencies; provider and connector PRs should add direct coverage around them.
 
 Current implemented surface:
 
