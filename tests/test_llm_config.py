@@ -23,6 +23,7 @@ class LLMConfigTest(unittest.TestCase):
                         "LLM_TEMPERATURE=0.2",
                         "LLM_MAX_TOKENS=2048",
                         "LLM_TIMEOUT_SECONDS=45",
+                        "LLM_AUTH_HEADER=api-key",
                         "ANTHROPIC_BASE_URL=https://token-plan-sgp.xiaomimimo.com/anthropic",
                     ]
                 )
@@ -39,6 +40,7 @@ class LLMConfigTest(unittest.TestCase):
             self.assertEqual(config.temperature, 0.2)
             self.assertEqual(config.max_tokens, 2048)
             self.assertEqual(config.timeout_seconds, 45)
+            self.assertEqual(config.auth_header, "api-key")
             self.assertTrue(config.is_openai_compatible)
 
     def test_llm_config_masks_secret_values(self):
@@ -70,7 +72,8 @@ class LLMConfigTest(unittest.TestCase):
 
         self.assertEqual(payload["model"], "mimo-v2.5-pro")
         self.assertEqual(payload["temperature"], 0.1)
-        self.assertEqual(payload["max_tokens"], 512)
+        self.assertEqual(payload["max_completion_tokens"], 512)
+        self.assertNotIn("max_tokens", payload)
         self.assertEqual(payload["messages"][0]["role"], "system")
         self.assertEqual(payload["messages"][1]["content"], "回答问题")
 

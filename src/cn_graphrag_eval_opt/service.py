@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from pathlib import Path
+from typing import Callable
 
 from cn_graphrag_eval_opt.api import Citation, QueryResponse, QueryTrace
 from cn_graphrag_eval_opt.chunking import ChineseTextSplitter
@@ -10,6 +11,8 @@ from cn_graphrag_eval_opt.evaluation import synthesize_answer
 from cn_graphrag_eval_opt.graph import GraphIndex
 from cn_graphrag_eval_opt.models import PipelineConfig
 from cn_graphrag_eval_opt.retrieval import GraphRAGRetriever
+
+Answerer = Callable[[str, list[Citation]], str]
 
 
 class QueryService:
@@ -34,7 +37,15 @@ class QueryService:
     def query(self, question: str) -> dict[str, object]:
         return self.query_response(question).to_dict()
 
-    def query_response(self, question: str) -> QueryResponse:
+    def query_response(
+        self,
+        question: str,
+        *,
+        answerer: Answerer | None = None,
+        answer_mode: str = "extractive",
+        llm_provider: str | None = None,
+        llm_model: str | None = None,
+    ) -> QueryResponse:
         results = self.retriever.retrieve(
             question,
             top_k=self.config.top_k,
@@ -52,14 +63,22 @@ class QueryService:
             )
             for result in results
         ]
+        answer = (
+            answerer(question, contexts)
+            if answerer
+            else synthesize_answer(question, [item.text for item in contexts])
+        )
         return QueryResponse(
             question=question,
-            answer=synthesize_answer(question, [item.text for item in contexts]),
+            answer=answer,
             contexts=contexts,
             config=asdict(self.config),
             trace=QueryTrace(
                 query_mode=self.config.query_mode,
                 top_k=self.config.top_k,
                 retrieved_count=len(contexts),
+                answer_mode=answer_mode,
+                llm_provider=llm_provider,
+                llm_model=llm_model,
             ),
         )

@@ -27,6 +27,9 @@ class QueryTrace:
     query_mode: str
     top_k: int
     retrieved_count: int
+    answer_mode: str = "extractive"
+    llm_provider: str | None = None
+    llm_model: str | None = None
 
 
 @dataclass(frozen=True)

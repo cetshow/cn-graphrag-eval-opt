@@ -13,7 +13,13 @@ from cn_graphrag_eval_opt.datasets import build_synthetic_qa, write_qa_jsonl
 from cn_graphrag_eval_opt.evaluation import evaluate_cases
 from cn_graphrag_eval_opt.evaluator_adapters import check_quality_gate
 from cn_graphrag_eval_opt.graph import GraphIndex
-from cn_graphrag_eval_opt.llm import load_llm_config
+from cn_graphrag_eval_opt.llm import (
+    LLMError,
+    OpenAICompatibleChatClient,
+    build_llm_request_plan,
+    generate_grounded_answer,
+    load_llm_config,
+)
 from cn_graphrag_eval_opt.models import EvaluationResult, PipelineConfig
 from cn_graphrag_eval_opt.optimization import run_optimization
 from cn_graphrag_eval_opt.pipeline import GraphRAGPipeline
@@ -66,10 +72,25 @@ def main(argv: list[str] | None = None) -> None:
     query.add_argument("--overlap", type=int, default=16)
     query.add_argument("--top-k", type=int, default=3)
 
+    ask = subparsers.add_parser("ask", help="Run retrieval and answer with MiMo LLM or offline mode.")
+    ask.add_argument("question")
+    ask.add_argument("--corpus", required=True)
+    ask.add_argument("--env", default=".env")
+    ask.add_argument("--offline", action="store_true", help="Use deterministic extractive answer mode.")
+    ask.add_argument("--query-mode", default="mix")
+    ask.add_argument("--chunk-size", type=int, default=128)
+    ask.add_argument("--overlap", type=int, default=16)
+    ask.add_argument("--top-k", type=int, default=3)
+
     integrations = subparsers.add_parser("integrations", help="Show optional upstream adapters.")
 
     llm_config = subparsers.add_parser("llm-config", help="Show redacted LLM environment config.")
     llm_config.add_argument("--env", default=".env")
+
+    llm_smoke = subparsers.add_parser("llm-smoke", help="Verify MiMo LLM connectivity.")
+    llm_smoke.add_argument("--env", default=".env")
+    llm_smoke.add_argument("--prompt", default="请用一句话介绍 MiMo。")
+    llm_smoke.add_argument("--dry-run", action="store_true")
 
     quality_gate = subparsers.add_parser(
         "quality-gate",
@@ -96,10 +117,14 @@ def main(argv: list[str] | None = None) -> None:
         _cmd_optimize(args)
     elif args.command == "query":
         _cmd_query(args)
+    elif args.command == "ask":
+        _cmd_ask(args)
     elif args.command == "integrations":
         _cmd_integrations()
     elif args.command == "llm-config":
         _cmd_llm_config(args)
+    elif args.command == "llm-smoke":
+        _cmd_llm_smoke(args)
     elif args.command == "quality-gate":
         _cmd_quality_gate(args)
 
@@ -190,6 +215,39 @@ def _cmd_query(args: argparse.Namespace) -> None:
     print(json.dumps(response, ensure_ascii=False, indent=2))
 
 
+def _cmd_ask(args: argparse.Namespace) -> None:
+    config = PipelineConfig(
+        chunk_size=args.chunk_size,
+        overlap=args.overlap,
+        top_k=args.top_k,
+        query_mode=args.query_mode,
+    )
+    service = QueryService.from_paths(args.corpus, config)
+    if args.offline:
+        response = service.query_response(args.question, answer_mode="extractive")
+        print(json.dumps(response.to_dict(), ensure_ascii=False, indent=2))
+        return
+
+    try:
+        llm_config = load_llm_config(args.env)
+        client = OpenAICompatibleChatClient(llm_config)
+
+        def answerer(question, contexts):
+            return generate_grounded_answer(client=client, question=question, contexts=contexts).content
+
+        response = service.query_response(
+            args.question,
+            answerer=answerer,
+            answer_mode="llm",
+            llm_provider=llm_config.provider,
+            llm_model=llm_config.model,
+        )
+    except LLMError as error:
+        print(json.dumps({"ok": False, "error": str(error)}, ensure_ascii=False, indent=2))
+        raise SystemExit(2) from error
+    print(json.dumps(response.to_dict(), ensure_ascii=False, indent=2))
+
+
 def _cmd_integrations() -> None:
     payload = [asdict(status) for status in optional_integrations()]
     print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -198,6 +256,33 @@ def _cmd_integrations() -> None:
 def _cmd_llm_config(args: argparse.Namespace) -> None:
     config = load_llm_config(args.env)
     print(json.dumps(config.to_safe_dict(), ensure_ascii=False, indent=2))
+
+
+def _cmd_llm_smoke(args: argparse.Namespace) -> None:
+    config = load_llm_config(args.env)
+    if args.dry_run:
+        print(json.dumps(build_llm_request_plan(config, args.prompt), ensure_ascii=False, indent=2))
+        return
+    try:
+        response = OpenAICompatibleChatClient(config).chat(
+            [{"role": "user", "content": args.prompt}]
+        )
+    except LLMError as error:
+        print(json.dumps({"ok": False, "error": str(error)}, ensure_ascii=False, indent=2))
+        raise SystemExit(2) from error
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "model": response.model,
+                "finish_reason": response.finish_reason,
+                "usage": response.usage,
+                "content": response.content,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
 
 
 def _cmd_quality_gate(args: argparse.Namespace) -> None:

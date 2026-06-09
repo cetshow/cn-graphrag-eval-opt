@@ -14,6 +14,15 @@ class DocumentationQualityTest(unittest.TestCase):
         self.assertNotIn("/Users/", readme)
         self.assertNotIn("/home/", readme)
 
+    def test_readme_is_product_documentation_not_resume_copy(self):
+        readme = Path("README.md").read_text(encoding="utf-8")
+
+        self.assertIn("Environment Requirements", readme)
+        self.assertIn("MiMo", readme)
+        self.assertNotIn("Resume Framing", readme)
+        self.assertNotIn("简历", readme)
+        self.assertNotIn("docs/resume-framing.md", readme)
+
     def test_ci_runs_tests_and_default_optimization(self):
         workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
 
