@@ -156,6 +156,8 @@ reproducible in CI and on machines without GPU/model credentials.
 > pipeline search, RAG metric evaluation, traceable query service, and reproducible experiment artifacts
 > including corpus manifests, chunk indexes, entity graphs, case-level metrics, leaderboards, and reports.
 
+See [docs/resume-framing.md](docs/resume-framing.md) for a longer interview narrative and resume bullet.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
