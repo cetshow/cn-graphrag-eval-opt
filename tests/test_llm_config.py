@@ -22,6 +22,7 @@ class LLMConfigTest(unittest.TestCase):
                         "LLM_MODEL=mimo-v2.5-pro",
                         "LLM_TEMPERATURE=0.2",
                         "LLM_MAX_TOKENS=2048",
+                        "LLM_CONTEXT_MAX_CHARS=4096",
                         "LLM_TIMEOUT_SECONDS=45",
                         "LLM_AUTH_HEADER=api-key",
                         "ANTHROPIC_BASE_URL=https://token-plan-sgp.xiaomimimo.com/anthropic",
@@ -39,6 +40,7 @@ class LLMConfigTest(unittest.TestCase):
             self.assertEqual(config.model, "mimo-v2.5-pro")
             self.assertEqual(config.temperature, 0.2)
             self.assertEqual(config.max_tokens, 2048)
+            self.assertEqual(config.context_max_chars, 4096)
             self.assertEqual(config.timeout_seconds, 45)
             self.assertEqual(config.auth_header, "api-key")
             self.assertTrue(config.is_openai_compatible)
@@ -84,6 +86,7 @@ class LLMConfigTest(unittest.TestCase):
         self.assertEqual(config.api_protocol, "openai")
         self.assertEqual(config.model, "mimo-v2.5-pro")
         self.assertEqual(config.max_tokens, 2048)
+        self.assertEqual(config.context_max_chars, 12000)
 
     def test_gitignore_excludes_local_env_file(self):
         gitignore = Path(".gitignore").read_text(encoding="utf-8").splitlines()

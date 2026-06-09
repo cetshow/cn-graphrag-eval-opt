@@ -12,6 +12,7 @@ from typing import Callable
 
 DEFAULT_LLM_ENV_PATH = Path(".env")
 PLACEHOLDER_API_KEY = "replace-with-your-dedicated-api-key"
+DEFAULT_CONTEXT_MAX_CHARS = 12000
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,7 @@ class LLMConfig:
     temperature: float = 0.2
     top_p: float = 1.0
     max_tokens: int = 2048
+    context_max_chars: int = DEFAULT_CONTEXT_MAX_CHARS
     timeout_seconds: int = 60
     retry_count: int = 2
     auth_header: str = "api-key"
@@ -163,6 +165,8 @@ class OpenAICompatibleChatClient:
             raise LLMConfigurationError("LLM_API_KEY must be set to a real MiMo credential")
         if self.config.auth_header not in {"api-key", "authorization"}:
             raise LLMConfigurationError("LLM_AUTH_HEADER must be api-key or authorization")
+        if self.config.context_max_chars <= 0:
+            raise LLMConfigurationError("LLM_CONTEXT_MAX_CHARS must be positive")
 
     @staticmethod
     def _http_error(status_code: int, payload: dict[str, object]) -> LLMHTTPError:
@@ -177,12 +181,13 @@ class OpenAICompatibleChatClient:
 def build_grounded_rag_messages(
     question: str,
     contexts: list[object],
+    *,
+    max_context_chars: int | None = None,
 ) -> list[dict[str, str]]:
-    context_lines = []
-    for index, context in enumerate(contexts, start=1):
-        chunk_id = _context_value(context, "chunk_id", f"context:{index}")
-        text = _context_value(context, "text", "")
-        context_lines.append(f"[{index}] chunk_id={chunk_id}\n{text}")
+    context_lines = _build_context_lines(
+        contexts,
+        max_context_chars=DEFAULT_CONTEXT_MAX_CHARS if max_context_chars is None else max_context_chars,
+    )
 
     return [
         {
@@ -225,6 +230,9 @@ def build_llm_request_plan(config: LLMConfig, prompt: str = "ping") -> dict[str,
             "top_p": payload["top_p"],
             "max_completion_tokens": payload["max_completion_tokens"],
         },
+        "context": {
+            "max_chars": config.context_max_chars,
+        },
         "configured": config.is_configured,
     }
 
@@ -235,7 +243,13 @@ def generate_grounded_answer(
     question: str,
     contexts: list[object],
 ) -> LLMResponse:
-    return client.chat(build_grounded_rag_messages(question, contexts))
+    return client.chat(
+        build_grounded_rag_messages(
+            question,
+            contexts,
+            max_context_chars=client.config.context_max_chars,
+        )
+    )
 
 
 def load_llm_config(env_path: str | Path = DEFAULT_LLM_ENV_PATH) -> LLMConfig:
@@ -250,6 +264,7 @@ def load_llm_config(env_path: str | Path = DEFAULT_LLM_ENV_PATH) -> LLMConfig:
         temperature=_float_env(values, "LLM_TEMPERATURE", 0.2),
         top_p=_float_env(values, "LLM_TOP_P", 1.0),
         max_tokens=_int_env(values, "LLM_MAX_TOKENS", 2048),
+        context_max_chars=_int_env(values, "LLM_CONTEXT_MAX_CHARS", DEFAULT_CONTEXT_MAX_CHARS),
         timeout_seconds=_int_env(values, "LLM_TIMEOUT_SECONDS", 60),
         retry_count=_int_env(values, "LLM_RETRY_COUNT", 2),
         auth_header=values.get("LLM_AUTH_HEADER", "api-key").strip().lower(),
@@ -298,6 +313,40 @@ def _mask_secret(secret: str) -> str:
     if len(secret) <= 8:
         return "*" * len(secret)
     return f"{secret[:4]}...{secret[-4:]}"
+
+
+def _build_context_lines(contexts: list[object], *, max_context_chars: int) -> list[str]:
+    if max_context_chars <= 0:
+        return ["[context truncated]"]
+
+    context_lines = []
+    used_chars = 0
+    for index, context in enumerate(contexts, start=1):
+        chunk_id = _context_value(context, "chunk_id", f"context:{index}")
+        text = _context_value(context, "text", "")
+        line = f"[{index}] chunk_id={chunk_id}\n{text}"
+        separator_chars = 2 if context_lines else 0
+        remaining_chars = max_context_chars - used_chars - separator_chars
+        if remaining_chars <= 0:
+            break
+        if len(line) <= remaining_chars:
+            context_lines.append(line)
+            used_chars += separator_chars + len(line)
+            continue
+        context_lines.append(_truncate_context_line(chunk_id, index, text, remaining_chars))
+        break
+    return context_lines or ["[context truncated]"]
+
+
+def _truncate_context_line(chunk_id: str, index: int, text: str, max_chars: int) -> str:
+    header = f"[{index}] chunk_id={chunk_id}\n"
+    marker = "\n[context truncated]"
+    if max_chars <= len(header):
+        return header[:max_chars]
+    text_budget = max_chars - len(header)
+    if text_budget <= len(marker):
+        return header + marker[:text_budget]
+    return header + text[: text_budget - len(marker)] + marker
 
 
 def _urllib_transport(
@@ -368,6 +417,7 @@ _LLM_ENV_KEYS = {
     "LLM_TEMPERATURE",
     "LLM_TOP_P",
     "LLM_MAX_TOKENS",
+    "LLM_CONTEXT_MAX_CHARS",
     "LLM_TIMEOUT_SECONDS",
     "LLM_RETRY_COUNT",
     "LLM_AUTH_HEADER",

@@ -63,6 +63,7 @@ LLM_MODEL=mimo-v2.5-pro
 LLM_TEMPERATURE=0.2
 LLM_TOP_P=1.0
 LLM_MAX_TOKENS=2048
+LLM_CONTEXT_MAX_CHARS=12000
 LLM_TIMEOUT_SECONDS=60
 LLM_RETRY_COUNT=2
 LLM_AUTH_HEADER=api-key
@@ -70,6 +71,8 @@ ANTHROPIC_BASE_URL=https://token-plan-sgp.xiaomimimo.com/anthropic
 ```
 
 MiMo Token Plan 官方示例使用 `api-key` header；本项目默认按该方式发送请求。先做脱敏检查：
+
+`LLM_MAX_TOKENS` 控制 MiMo 输出预算，`LLM_CONTEXT_MAX_CHARS` 控制送入 LLM 的检索上下文字符预算，避免长文档直接撑爆请求。
 
 ```bash
 python -m cn_graphrag_eval_opt llm-config --env .env
@@ -197,6 +200,7 @@ LLM_MODEL=mimo-v2.5-pro
 LLM_TEMPERATURE=0.2
 LLM_TOP_P=1.0
 LLM_MAX_TOKENS=2048
+LLM_CONTEXT_MAX_CHARS=12000
 LLM_TIMEOUT_SECONDS=60
 LLM_RETRY_COUNT=2
 LLM_AUTH_HEADER=api-key
@@ -204,6 +208,8 @@ ANTHROPIC_BASE_URL=https://token-plan-sgp.xiaomimimo.com/anthropic
 ```
 
 MiMo Token Plan examples use the `api-key` header, so this project uses it by default.
+
+`LLM_MAX_TOKENS` controls the MiMo completion budget. `LLM_CONTEXT_MAX_CHARS` controls the retrieved-context character budget sent to the model, which keeps long corpora from overwhelming a request.
 
 ```bash
 python -m cn_graphrag_eval_opt llm-config --env .env

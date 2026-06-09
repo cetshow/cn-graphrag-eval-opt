@@ -9,6 +9,7 @@ from cn_graphrag_eval_opt.llm import (
     LLMHTTPError,
     OpenAICompatibleChatClient,
     build_grounded_rag_messages,
+    build_llm_request_plan,
 )
 
 
@@ -119,6 +120,37 @@ class LLMRuntimeTest(unittest.TestCase):
         self.assertIn("security:0001", messages[1]["content"])
         self.assertIn("哪个部门复核高危权限？", messages[1]["content"])
         self.assertIn("引用 chunk_id", messages[1]["content"])
+
+    def test_grounded_rag_messages_respect_context_character_budget(self):
+        messages = build_grounded_rag_messages(
+            "Which department reviews access?",
+            [
+                {"chunk_id": "security:0001", "text": "A" * 200 + "TAIL_SHOULD_NOT_APPEAR"},
+                {"chunk_id": "hr:0001", "text": "B" * 200},
+            ],
+            max_context_chars=90,
+        )
+        user_content = messages[1]["content"]
+
+        self.assertIn("security:0001", user_content)
+        self.assertNotIn("TAIL_SHOULD_NOT_APPEAR", user_content)
+        self.assertIn("[context truncated]", user_content)
+        self.assertLessEqual(len(user_content), 260)
+
+    def test_request_plan_exposes_context_budget_without_leaking_secret(self):
+        config = LLMConfig(
+            provider="mimo",
+            api_protocol="openai",
+            base_url="https://token-plan-cn.xiaomimimo.com/v1",
+            api_key="tp-test-secret",
+            model="mimo-v2.5-pro",
+            context_max_chars=4096,
+        )
+
+        plan = build_llm_request_plan(config, "ping")
+
+        self.assertEqual(plan["context"]["max_chars"], 4096)
+        self.assertNotIn("tp-test-secret", str(plan))
 
 
 if __name__ == "__main__":
