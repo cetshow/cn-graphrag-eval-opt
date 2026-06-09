@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from pathlib import Path
 
+from cn_graphrag_eval_opt.api import Citation, QueryResponse, QueryTrace
 from cn_graphrag_eval_opt.chunking import ChineseTextSplitter
 from cn_graphrag_eval_opt.corpus import load_corpus
 from cn_graphrag_eval_opt.evaluation import synthesize_answer
@@ -31,31 +32,34 @@ class QueryService:
         return cls(GraphRAGRetriever(GraphIndex.from_chunks(chunks)), config)
 
     def query(self, question: str) -> dict[str, object]:
+        return self.query_response(question).to_dict()
+
+    def query_response(self, question: str) -> QueryResponse:
         results = self.retriever.retrieve(
             question,
             top_k=self.config.top_k,
             mode=self.config.query_mode,
         )
         contexts = [
-            {
-                "chunk_id": result.chunk.chunk_id,
-                "doc_id": result.chunk.doc_id,
-                "title": result.chunk.title,
-                "source": result.chunk.source,
-                "score": result.score,
-                "evidence": result.evidence,
-                "text": result.chunk.text,
-            }
+            Citation(
+                chunk_id=result.chunk.chunk_id,
+                doc_id=result.chunk.doc_id,
+                title=result.chunk.title,
+                source=result.chunk.source,
+                score=result.score,
+                evidence=result.evidence,
+                text=result.chunk.text,
+            )
             for result in results
         ]
-        return {
-            "question": question,
-            "answer": synthesize_answer(question, [item["text"] for item in contexts]),
-            "contexts": contexts,
-            "config": asdict(self.config),
-            "trace": {
-                "query_mode": self.config.query_mode,
-                "top_k": self.config.top_k,
-                "retrieved_count": len(contexts),
-            },
-        }
+        return QueryResponse(
+            question=question,
+            answer=synthesize_answer(question, [item.text for item in contexts]),
+            contexts=contexts,
+            config=asdict(self.config),
+            trace=QueryTrace(
+                query_mode=self.config.query_mode,
+                top_k=self.config.top_k,
+                retrieved_count=len(contexts),
+            ),
+        )
