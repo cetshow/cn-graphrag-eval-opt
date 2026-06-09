@@ -1,35 +1,16 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
+from cn_graphrag_eval_opt.connectors import LocalFileConnector, load_documents
 from cn_graphrag_eval_opt.models import Document, QACase
 
-SUPPORTED_CORPUS_SUFFIXES = {".md", ".txt"}
+SUPPORTED_CORPUS_SUFFIXES = set(LocalFileConnector.supported_suffixes)
 
 
 def load_corpus(path: str | Path) -> list[Document]:
-    root = Path(path)
-    if not root.exists():
-        raise FileNotFoundError(f"Corpus path does not exist: {root}")
-
-    files = [root] if root.is_file() else sorted(
-        file for file in root.rglob("*") if file.suffix.lower() in SUPPORTED_CORPUS_SUFFIXES
-    )
-    documents: list[Document] = []
-    for file in files:
-        text = file.read_text(encoding="utf-8").strip()
-        if not text:
-            continue
-        source = str(file)
-        title = _extract_title(text, file)
-        doc_id = _stable_doc_id(file, root if root.is_dir() else file.parent)
-        documents.append(Document(doc_id=doc_id, title=title, text=text, source=source))
-
-    if not documents:
-        raise ValueError(f"No non-empty Markdown/TXT documents found in {root}")
-    return documents
+    return load_documents(path)
 
 
 def load_qa_jsonl(path: str | Path) -> list[QACase]:
@@ -61,16 +42,3 @@ def load_qa_jsonl(path: str | Path) -> list[QACase]:
     if not cases:
         raise ValueError(f"No QA cases found in {qa_path}")
     return cases
-
-
-def _extract_title(text: str, file: Path) -> str:
-    match = re.search(r"^#\s+(.+)$", text, flags=re.MULTILINE)
-    return match.group(1).strip() if match else file.stem
-
-
-def _stable_doc_id(file: Path, root: Path) -> str:
-    try:
-        relative = file.relative_to(root)
-    except ValueError:
-        relative = file.name
-    return str(relative).replace("\\", "/").rsplit(".", 1)[0]
