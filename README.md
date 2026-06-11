@@ -28,9 +28,10 @@ Language: [中文](#中文说明) | [English](#english)
 | MiMo LLM | 通过 OpenAI-compatible `/chat/completions` 调用 MiMo |
 | Query API | 输出 answer、contexts、citations、scores、trace、LLM metadata |
 | 回答审计 | 校验 LLM 回答中的 `chunk_id` 引用，输出 grounded、citation coverage 和 warnings |
+| 增量索引 | 保存 `doc_status.json`，按文档 hash 跳过未变文档并支持逻辑删除 |
 | 评测优化 | 运行多 pipeline config，输出 leaderboard、best config 和 report |
 | 质量门禁 | 用 `quality-gate` 在 CI 中阻断低质量检索结果 |
-| 可选生态 | 通过 provider registry 描述 LightRAG、AutoRAG、Ragas、DeepEval、Neo4j |
+| 可选生态 | 通过 provider registry 和 `provenance` 描述上游参考、许可证和复用边界 |
 
 ### 环境要求
 
@@ -121,6 +122,14 @@ python -m cn_graphrag_eval_opt ask "哪个部门每月复核高危权限？" --c
 
 `ask` 的 JSON trace 会包含 `grounded`、`citation_coverage`、`cited_chunk_ids`、`missing_citation_ids` 和 `warnings`，用于检查回答是否引用了本次检索上下文。
 
+持久化索引并启用增量账本：
+
+```bash
+python -m cn_graphrag_eval_opt ingest --corpus examples/corpus --out runs/index --incremental
+```
+
+索引目录会写入 `chunks.jsonl`、`graph.json`、`metadata.json` 和 `doc_status.json`。再次执行时，未变文档会按内容 hash 跳过；需要逻辑移除文档时可添加 `--delete-doc-id <doc_id>`。
+
 运行 CI 质量门禁：
 
 ```bash
@@ -149,12 +158,19 @@ runs/demo/
 ```bash
 python -m unittest discover -s tests
 python -m cn_graphrag_eval_opt integrations
+python -m cn_graphrag_eval_opt provenance
 python -m cn_graphrag_eval_opt doctor --corpus examples/corpus --env .env.example --question "哪个部门每月复核高危权限？"
 python -m cn_graphrag_eval_opt llm-config --env .env.example
 python -m cn_graphrag_eval_opt llm-smoke --env .env.example --dry-run
 python -m cn_graphrag_eval_opt optimize --config configs/default.toml
 python -m cn_graphrag_eval_opt quality-gate --summary runs/demo/summary.json --threshold retrieval_recall=0.8 --threshold faithfulness=0.7
 ```
+
+### 上游参考与许可证边界
+
+本项目使用 MIT License 发布。项目会参考 Microsoft GraphRAG、LightRAG、AutoRAG、RAGFlow、Ragas、R2R 等公开 RAG 系统的架构、评测和产品设计，但除非文件中明确说明，否则当前仓库不 vendoring、不复制、不修改这些上游项目源码。
+
+参考项目仍遵循各自许可证：LightRAG 与 R2R 使用 MIT License，AutoRAG 与 RAGFlow 使用 Apache License 2.0。可选集成作为第三方包使用，仍受其自身许可证约束。若未来复制、修改或派生上游源码，相关文件或模块必须保留上游版权声明、许可证文本、NOTICE 义务和本地修改说明。
 
 ## English
 
@@ -174,6 +190,7 @@ The project follows engineering ideas from Microsoft GraphRAG, LightRAG, AutoRAG
 | MiMo LLM | OpenAI-compatible `/chat/completions` client with retry support |
 | Query API | Answers with contexts, citations, scores, traces, and LLM metadata |
 | Answer Audit | Validates `chunk_id` citations in LLM answers and reports grounded, citation coverage, and warnings |
+| Incremental Index | Persists `doc_status.json`, skips unchanged document hashes, and supports logical document deletion |
 | Evaluation | Deterministic Ragas-style proxy metrics for CI-safe runs |
 | Optimization | AutoRAG-style config search, leaderboard, best config, and reports |
 | Quality Gate | Threshold-based CI gate over retrieval/evaluation metrics |
@@ -241,21 +258,31 @@ python -m cn_graphrag_eval_opt optimize --config configs/default.toml
 python -m cn_graphrag_eval_opt query "哪个部门每月复核高危权限？" --corpus examples/corpus --query-mode mix
 python -m cn_graphrag_eval_opt ask "哪个部门每月复核高危权限？" --corpus examples/corpus --offline
 python -m cn_graphrag_eval_opt ask "哪个部门每月复核高危权限？" --corpus examples/corpus --env .env
+python -m cn_graphrag_eval_opt ingest --corpus examples/corpus --out runs/index --incremental
 python -m cn_graphrag_eval_opt quality-gate --summary runs/demo/summary.json --threshold retrieval_recall=0.8 --threshold faithfulness=0.7
 ```
 
 The `ask` response trace includes `grounded`, `citation_coverage`, `cited_chunk_ids`, `missing_citation_ids`, and `warnings` so callers can inspect whether an LLM answer cites the retrieved context.
+
+`ingest --out --incremental` writes `chunks.jsonl`, `graph.json`, `metadata.json`, and `doc_status.json`. Re-running the command skips unchanged documents by content hash; use `--delete-doc-id <doc_id>` for logical document removal from the persisted index.
 
 ### Development
 
 ```bash
 python -m unittest discover -s tests
 python -m cn_graphrag_eval_opt integrations
+python -m cn_graphrag_eval_opt provenance
 python -m cn_graphrag_eval_opt doctor --corpus examples/corpus --env .env.example --question "哪个部门每月复核高危权限？"
 python -m cn_graphrag_eval_opt llm-config --env .env.example
 python -m cn_graphrag_eval_opt llm-smoke --env .env.example --dry-run
 python -m cn_graphrag_eval_opt optimize --config configs/default.toml
 ```
+
+### Upstream References and License Boundary
+
+This project is released under the MIT License. It studies public RAG systems such as Microsoft GraphRAG, LightRAG, AutoRAG, RAGFlow, Ragas, and R2R as architectural, evaluation, and product references, but the repository does not vendor, copy, or modify their source code unless explicitly stated.
+
+Reference projects remain under their own licenses: LightRAG and R2R use the MIT License; AutoRAG and RAGFlow use the Apache License 2.0. Optional integrations are consumed as third-party packages under their own licenses. If future changes copy, modify, or derive upstream source code, the copied files or derived modules must preserve the upstream copyright, license text, NOTICE obligations, and local modification notes.
 
 ## License
 
