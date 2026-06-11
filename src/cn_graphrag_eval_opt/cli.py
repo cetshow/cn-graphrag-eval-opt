@@ -15,6 +15,7 @@ from cn_graphrag_eval_opt.diagnostics import run_product_doctor
 from cn_graphrag_eval_opt.evaluation import evaluate_cases
 from cn_graphrag_eval_opt.evaluator_adapters import check_quality_gate
 from cn_graphrag_eval_opt.graph import GraphIndex
+from cn_graphrag_eval_opt.incremental import IncrementalIndexUpdater
 from cn_graphrag_eval_opt.llm import (
     LLMError,
     OpenAICompatibleChatClient,
@@ -25,9 +26,11 @@ from cn_graphrag_eval_opt.llm import (
 from cn_graphrag_eval_opt.models import EvaluationResult, PipelineConfig
 from cn_graphrag_eval_opt.optimization import run_optimization
 from cn_graphrag_eval_opt.pipeline import GraphRAGPipeline
+from cn_graphrag_eval_opt.provenance import provenance_policy
 from cn_graphrag_eval_opt.reporting import write_json_artifacts, write_markdown_report
 from cn_graphrag_eval_opt.retrieval import GraphRAGRetriever
 from cn_graphrag_eval_opt.service import QueryService
+from cn_graphrag_eval_opt.stores import JsonlIndexStore
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -44,6 +47,9 @@ def main(argv: list[str] | None = None) -> None:
     ingest.add_argument("--corpus", required=True)
     ingest.add_argument("--chunk-size", type=int, default=128)
     ingest.add_argument("--overlap", type=int, default=16)
+    ingest.add_argument("--out", default=None, help="Optional directory for persisted index files.")
+    ingest.add_argument("--incremental", action="store_true", help="Reuse an existing index ledger when --out exists.")
+    ingest.add_argument("--delete-doc-id", action="append", default=[], help="Logical document id to remove from the persisted index.")
 
     evaluate = subparsers.add_parser("evaluate", help="Evaluate one pipeline config.")
     evaluate.add_argument("--corpus", required=True)
@@ -95,6 +101,8 @@ def main(argv: list[str] | None = None) -> None:
 
     integrations = subparsers.add_parser("integrations", help="Show optional upstream adapters.")
 
+    subparsers.add_parser("provenance", help="Show upstream reference and license boundary metadata.")
+
     llm_config = subparsers.add_parser("llm-config", help="Show redacted LLM environment config.")
     llm_config.add_argument("--env", default=".env")
 
@@ -134,6 +142,8 @@ def main(argv: list[str] | None = None) -> None:
         _cmd_doctor(args)
     elif args.command == "integrations":
         _cmd_integrations()
+    elif args.command == "provenance":
+        _cmd_provenance()
     elif args.command == "llm-config":
         _cmd_llm_config(args)
     elif args.command == "llm-smoke":
@@ -152,8 +162,40 @@ def _cmd_init(args: argparse.Namespace) -> None:
 
 def _cmd_ingest(args: argparse.Namespace) -> None:
     documents = load_corpus(args.corpus)
-    chunks = ChineseTextSplitter(args.chunk_size, args.overlap).split_many(documents)
-    _print_json({"documents": len(documents), "chunks": len(chunks)})
+    splitter = ChineseTextSplitter(args.chunk_size, args.overlap)
+    if not args.out:
+        chunks = splitter.split_many(documents)
+        _print_json({"documents": len(documents), "chunks": len(chunks)})
+        return
+
+    store = JsonlIndexStore(args.out)
+    updater = IncrementalIndexUpdater(splitter)
+    if args.incremental:
+        try:
+            result = updater.apply(
+                store.load(),
+                store.load_ledger(),
+                changed_documents=documents,
+                deleted_doc_ids=args.delete_doc_id,
+            )
+        except FileNotFoundError:
+            result = updater.build(documents)
+    else:
+        result = updater.build(documents)
+
+    metadata = store.save(result.index)
+    ledger_path = store.save_ledger(result.ledger)
+    _print_json(
+        {
+            "documents": len(result.ledger.documents),
+            "chunks": metadata.chunk_count,
+            "changed_doc_ids": result.changed_doc_ids,
+            "deleted_doc_ids": result.deleted_doc_ids,
+            "skipped_doc_ids": result.skipped_doc_ids,
+            "index_dir": str(store.root),
+            "ledger": str(ledger_path),
+        }
+    )
 
 
 def _cmd_evaluate(args: argparse.Namespace) -> None:
@@ -270,6 +312,10 @@ def _cmd_doctor(args: argparse.Namespace) -> None:
 def _cmd_integrations() -> None:
     payload = [asdict(status) for status in optional_integrations()]
     _print_json(payload, indent=2)
+
+
+def _cmd_provenance() -> None:
+    _print_json(provenance_policy(), indent=2)
 
 
 def _cmd_llm_config(args: argparse.Namespace) -> None:

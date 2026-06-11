@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from cn_graphrag_eval_opt.graph import GraphIndex
+from cn_graphrag_eval_opt.incremental import IndexLedger
 from cn_graphrag_eval_opt.models import Chunk
 
 
@@ -88,6 +89,19 @@ class JsonlIndexStore:
             raise FileNotFoundError(f"Missing metadata file: {self._metadata_path}")
         return IndexStoreMetadata(**json.loads(self._metadata_path.read_text(encoding="utf-8")))
 
+    def save_ledger(self, ledger: IndexLedger) -> Path:
+        self.root.mkdir(parents=True, exist_ok=True)
+        self._ledger_path.write_text(
+            json.dumps(ledger.to_dict(), ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        return self._ledger_path
+
+    def load_ledger(self) -> IndexLedger:
+        if not self._ledger_path.exists():
+            raise FileNotFoundError(f"Missing index ledger file: {self._ledger_path}")
+        return IndexLedger.from_dict(json.loads(self._ledger_path.read_text(encoding="utf-8")))
+
     @property
     def _chunks_path(self) -> Path:
         return self.root / "chunks.jsonl"
@@ -99,3 +113,7 @@ class JsonlIndexStore:
     @property
     def _metadata_path(self) -> Path:
         return self.root / "metadata.json"
+
+    @property
+    def _ledger_path(self) -> Path:
+        return self.root / "doc_status.json"

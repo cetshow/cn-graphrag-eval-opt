@@ -41,6 +41,22 @@ class DocumentationQualityTest(unittest.TestCase):
         self.assertIn("GraphRAG", doc)
         self.assertIn("Chinese enterprise", doc)
 
+    def test_upstream_license_boundary_is_documented(self):
+        readme = Path("README.md").read_text(encoding="utf-8")
+        notice = Path("NOTICE.md").read_text(encoding="utf-8")
+        references = Path("docs/references.md").read_text(encoding="utf-8")
+        combined = "\n".join([readme, notice, references])
+
+        for project in ("LightRAG", "AutoRAG", "RAGFlow", "R2R"):
+            self.assertIn(project, combined)
+        for license_name in ("MIT License", "Apache License 2.0"):
+            self.assertIn(license_name, combined)
+
+        self.assertIn("does not vendor", notice)
+        self.assertIn("copied, modified, or derived", notice)
+        self.assertIn("Reuse Boundary", references)
+        self.assertIn("provenance", readme)
+
 
 if __name__ == "__main__":
     unittest.main()
