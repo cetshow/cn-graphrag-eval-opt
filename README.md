@@ -30,6 +30,7 @@ Language: [中文](#中文说明) | [English](#english)
 | 回答审计 | 校验 LLM 回答中的 `chunk_id` 引用，输出 grounded、citation coverage 和 warnings |
 | 增量索引 | 保存 `doc_status.json`，按文档 hash 跳过未变文档并支持逻辑删除 |
 | 评测优化 | 运行多 pipeline config，输出 leaderboard、best config 和 report |
+| 实验结果 | 内置数据集真实跑出 recall/precision/relevance/faithfulness/token cost 等量化指标 |
 | 质量门禁 | 用 `quality-gate` 在 CI 中阻断低质量检索结果 |
 | 可选生态 | 通过 provider registry 和 `provenance` 描述上游参考、许可证和复用边界 |
 
@@ -153,6 +154,26 @@ runs/demo/
   reports/report.md
 ```
 
+### 数据集实验结果
+
+在内置中文企业文档数据集上实际运行：
+
+```bash
+python -m cn_graphrag_eval_opt optimize --config configs/default.toml --out <experiment-out-dir>
+```
+
+实验集包含 3 篇企业制度文档、302 个中文字符、3 条人工 QA、5 组 pipeline 配置。最佳配置为 `local` 检索、`chunk_size=128`、`overlap=16`、`top_k=3`。
+
+| 指标 | 最佳配置 |
+| --- | ---: |
+| retrieval_recall | 1.0000 |
+| context_precision | 1.0000 |
+| answer_relevance | 1.0000 |
+| faithfulness | 0.9792 |
+| estimated_token_cost | 30.5167 |
+
+对比 baseline 是默认实验配置中的 `naive` 检索：`query_mode=naive`、`chunk_size=96`、`overlap=12`、`top_k=2`，检索信号为 lexical + hashing dense，不使用实体图局部/全局扩展。相对该 baseline，最佳 `local` 图谱检索配置将 context precision 从 0.6667 提升到 1.0000，同时 estimated token cost 从 39.2733 降到 30.5167，降低 22.3%。相对 `global` 配置，在保持 recall 和 faithfulness 相同的同时降低 40.9% token cost；相对 `hybrid/mix` 降低 66.7% token cost。完整 leaderboard 见 [docs/experiments.md](docs/experiments.md)。
+
 ### 开发与测试
 
 ```bash
@@ -193,6 +214,7 @@ The project follows engineering ideas from Microsoft GraphRAG, LightRAG, AutoRAG
 | Incremental Index | Persists `doc_status.json`, skips unchanged document hashes, and supports logical document deletion |
 | Evaluation | Deterministic Ragas-style proxy metrics for CI-safe runs |
 | Optimization | AutoRAG-style config search, leaderboard, best config, and reports |
+| Experiment Results | Reports measured recall, precision, relevance, faithfulness, and token-cost metrics on the built-in dataset |
 | Quality Gate | Threshold-based CI gate over retrieval/evaluation metrics |
 
 ### Environment Requirements
@@ -265,6 +287,26 @@ python -m cn_graphrag_eval_opt quality-gate --summary runs/demo/summary.json --t
 The `ask` response trace includes `grounded`, `citation_coverage`, `cited_chunk_ids`, `missing_citation_ids`, and `warnings` so callers can inspect whether an LLM answer cites the retrieved context.
 
 `ingest --out --incremental` writes `chunks.jsonl`, `graph.json`, `metadata.json`, and `doc_status.json`. Re-running the command skips unchanged documents by content hash; use `--delete-doc-id <doc_id>` for logical document removal from the persisted index.
+
+### Dataset Experiment Results
+
+The built-in Chinese enterprise dataset contains 3 policy documents, 302 Chinese characters, 3 human QA cases, and 5 compared pipeline configs. Running:
+
+```bash
+python -m cn_graphrag_eval_opt optimize --config configs/default.toml --out <experiment-out-dir>
+```
+
+selects `local` retrieval with `chunk_size=128`, `overlap=16`, and `top_k=3`.
+
+| Metric | Best config |
+| --- | ---: |
+| retrieval_recall | 1.0000 |
+| context_precision | 1.0000 |
+| answer_relevance | 1.0000 |
+| faithfulness | 0.9792 |
+| estimated_token_cost | 30.5167 |
+
+The comparison baseline is the default `naive` retriever: `query_mode=naive`, `chunk_size=96`, `overlap=12`, and `top_k=2`. It uses lexical + hashing dense retrieval signals without local/global entity-graph expansion. Compared with that baseline, the best `local` graph retrieval config raises context precision from 0.6667 to 1.0000 and reduces estimated token cost from 39.2733 to 30.5167, a 22.3% reduction. It also reduces token cost by 40.9% versus `global` and by 66.7% versus `hybrid/mix` while keeping the same recall and faithfulness. See [docs/experiments.md](docs/experiments.md) for the full leaderboard.
 
 ### Development
 
