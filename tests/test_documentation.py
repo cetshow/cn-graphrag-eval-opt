@@ -57,6 +57,23 @@ class DocumentationQualityTest(unittest.TestCase):
         self.assertIn("Reuse Boundary", references)
         self.assertIn("provenance", readme)
 
+    def test_dataset_experiment_numbers_define_baseline(self):
+        readme = Path("README.md").read_text(encoding="utf-8")
+        experiments = Path("docs/experiments.md").read_text(encoding="utf-8")
+        combined = "\n".join([readme, experiments])
+
+        for value in ("retrieval_recall", "context_precision", "faithfulness", "estimated_token_cost"):
+            self.assertIn(value, combined)
+        for value in ("0.6667", "1.0000", "30.5167", "39.2733", "22.3%"):
+            self.assertIn(value, combined)
+
+        self.assertIn("query_mode=naive", combined)
+        self.assertIn("chunk_size=96", combined)
+        self.assertIn("overlap=12", combined)
+        self.assertIn("top_k=2", combined)
+        self.assertIn("lexical + hashing dense", combined)
+        self.assertIn("without entity-graph expansion", combined)
+
 
 if __name__ == "__main__":
     unittest.main()
