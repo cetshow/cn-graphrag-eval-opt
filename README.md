@@ -156,23 +156,23 @@ runs/demo/
 
 ### 数据集实验结果
 
-在内置中文企业文档数据集上实际运行：
+在内置中文企业文档数据集和新增 benchmark 上实际运行：
 
 ```bash
 python -m cn_graphrag_eval_opt optimize --config configs/default.toml --out <experiment-out-dir>
+python -m cn_graphrag_eval_opt optimize --corpus examples/benchmarks/small_enterprise/corpus --qa examples/benchmarks/small_enterprise/qa.jsonl --out <experiment-out-dir>
+python -m cn_graphrag_eval_opt optimize --corpus examples/benchmarks/medium_enterprise/corpus --qa examples/benchmarks/medium_enterprise/qa.jsonl --out <experiment-out-dir>
 ```
 
-实验集包含 3 篇企业制度文档、302 个中文字符、3 条人工 QA、5 组 pipeline 配置。最佳配置为 `local` 检索、`chunk_size=128`、`overlap=16`、`top_k=3`。
+三组实验覆盖 3/5/10 篇企业制度文档、302/659/1284 个中文字符、3/8/15 条 QA，并统一比较 5 组 pipeline 配置。对比 baseline 是默认实验配置中的 `naive` 检索：`query_mode=naive`、`chunk_size=96`、`overlap=12`、`top_k=2`，检索信号为 lexical + hashing dense，不使用实体图局部/全局扩展。
 
-| 指标 | 最佳配置 |
-| --- | ---: |
-| retrieval_recall | 1.0000 |
-| context_precision | 1.0000 |
-| answer_relevance | 1.0000 |
-| faithfulness | 0.9792 |
-| estimated_token_cost | 30.5167 |
+| 数据集 | 最佳模式 | Recall | Precision | Faithfulness | Token cost | 相对 baseline 结论 |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| built-in enterprise corpus | `local` | 1.0000 | 1.0000 | 0.9792 | 30.5167 | precision 从 0.6667 提升到 1.0000，token cost 降低 22.3%。 |
+| small enterprise benchmark | `naive` | 1.0000 | 0.6875 | 0.9961 | 45.8575 | baseline 最优，相比 `local` 降低 39.8% token cost。 |
+| medium enterprise benchmark | `naive` | 1.0000 | 0.8333 | 0.9983 | 44.1240 | baseline 最优，相比 `local` 降低 48.4% token cost。 |
 
-对比 baseline 是默认实验配置中的 `naive` 检索：`query_mode=naive`、`chunk_size=96`、`overlap=12`、`top_k=2`，检索信号为 lexical + hashing dense，不使用实体图局部/全局扩展。相对该 baseline，最佳 `local` 图谱检索配置将 context precision 从 0.6667 提升到 1.0000，同时 estimated token cost 从 39.2733 降到 30.5167，降低 22.3%。相对 `global` 配置，在保持 recall 和 faithfulness 相同的同时降低 40.9% token cost；相对 `hybrid/mix` 降低 66.7% token cost。完整 leaderboard 见 [docs/experiments.md](docs/experiments.md)。
+结论不是“图谱永远更好”：短小且实体关系明确的 3 文档集上 `local` 图谱检索更精确、更省上下文；词面锚点更强的小/中型制度集上 `naive` baseline 更稳、更省 token。完整 leaderboard、baseline 定义和 case-level 结果见 [docs/experiments.md](docs/experiments.md)。
 
 ### 开发与测试
 
@@ -290,23 +290,23 @@ The `ask` response trace includes `grounded`, `citation_coverage`, `cited_chunk_
 
 ### Dataset Experiment Results
 
-The built-in Chinese enterprise dataset contains 3 policy documents, 302 Chinese characters, 3 human QA cases, and 5 compared pipeline configs. Running:
+Run the built-in corpus plus the added small and medium enterprise benchmarks:
 
 ```bash
 python -m cn_graphrag_eval_opt optimize --config configs/default.toml --out <experiment-out-dir>
+python -m cn_graphrag_eval_opt optimize --corpus examples/benchmarks/small_enterprise/corpus --qa examples/benchmarks/small_enterprise/qa.jsonl --out <experiment-out-dir>
+python -m cn_graphrag_eval_opt optimize --corpus examples/benchmarks/medium_enterprise/corpus --qa examples/benchmarks/medium_enterprise/qa.jsonl --out <experiment-out-dir>
 ```
 
-selects `local` retrieval with `chunk_size=128`, `overlap=16`, and `top_k=3`.
+The three suites cover 3/5/10 policy documents, 302/659/1284 Chinese characters, 3/8/15 QA cases, and the same 5 pipeline configs. The comparison baseline is the default `naive` retriever: `query_mode=naive`, `chunk_size=96`, `overlap=12`, and `top_k=2`. It uses lexical + hashing dense retrieval signals without local/global entity-graph expansion.
 
-| Metric | Best config |
-| --- | ---: |
-| retrieval_recall | 1.0000 |
-| context_precision | 1.0000 |
-| answer_relevance | 1.0000 |
-| faithfulness | 0.9792 |
-| estimated_token_cost | 30.5167 |
+| Dataset | Best mode | Recall | Precision | Faithfulness | Token cost | Result vs baseline |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| built-in enterprise corpus | `local` | 1.0000 | 1.0000 | 0.9792 | 30.5167 | precision improves from 0.6667 to 1.0000 and token cost drops by 22.3%. |
+| small enterprise benchmark | `naive` | 1.0000 | 0.6875 | 0.9961 | 45.8575 | baseline wins and costs 39.8% less than `local`. |
+| medium enterprise benchmark | `naive` | 1.0000 | 0.8333 | 0.9983 | 44.1240 | baseline wins and costs 48.4% less than `local`. |
 
-The comparison baseline is the default `naive` retriever: `query_mode=naive`, `chunk_size=96`, `overlap=12`, and `top_k=2`. It uses lexical + hashing dense retrieval signals without local/global entity-graph expansion. Compared with that baseline, the best `local` graph retrieval config raises context precision from 0.6667 to 1.0000 and reduces estimated token cost from 39.2733 to 30.5167, a 22.3% reduction. It also reduces token cost by 40.9% versus `global` and by 66.7% versus `hybrid/mix` while keeping the same recall and faithfulness. See [docs/experiments.md](docs/experiments.md) for the full leaderboard.
+The measured conclusion is deliberately practical: graph retrieval helps on the compact entity-local corpus, while the simple `naive` baseline remains stronger on keyword-heavy small/medium policy suites. See [docs/experiments.md](docs/experiments.md) for full leaderboards, baseline definitions, and case-level results.
 
 ### Development
 
