@@ -9,7 +9,7 @@ from cn_graphrag_eval_opt.optimization import run_optimization
 
 
 class BenchmarkDatasetTest(unittest.TestCase):
-    def test_small_and_medium_enterprise_benchmarks_are_reproducible(self):
+    def test_enterprise_benchmarks_are_reproducible(self):
         cases = [
             {
                 "name": "small_enterprise",
@@ -27,6 +27,42 @@ class BenchmarkDatasetTest(unittest.TestCase):
                 "precision": 0.8333,
                 "token_cost": 44.1240,
             },
+            {
+                "name": "scale_enterprise",
+                "documents": 12,
+                "qa_cases": 12,
+                "best_mode": "naive",
+                "recall": 0.9722,
+                "precision": 0.7917,
+                "token_cost": 39.7642,
+            },
+            {
+                "name": "multi_hop_enterprise",
+                "documents": 6,
+                "qa_cases": 6,
+                "best_mode": "hybrid",
+                "recall": 0.9444,
+                "precision": 0.6667,
+                "token_cost": 76.1467,
+            },
+            {
+                "name": "noisy_enterprise",
+                "documents": 6,
+                "qa_cases": 4,
+                "best_mode": "naive",
+                "recall": 1.0,
+                "precision": 1.0,
+                "token_cost": 50.4700,
+            },
+            {
+                "name": "vertical_industry",
+                "documents": 4,
+                "qa_cases": 4,
+                "best_mode": "global",
+                "recall": 1.0,
+                "precision": 0.5417,
+                "token_cost": 57.6575,
+            },
         ]
 
         for case in cases:
@@ -40,7 +76,11 @@ class BenchmarkDatasetTest(unittest.TestCase):
                 self.assertEqual(len(qa_cases), case["qa_cases"])
                 self.assertEqual(result.best_config.query_mode, case["best_mode"])
                 self.assertEqual(result.best_summary.case_count, case["qa_cases"])
-                self.assertEqual(result.best_summary.metrics["retrieval_recall"], 1.0)
+                self.assertAlmostEqual(
+                    result.best_summary.metrics["retrieval_recall"],
+                    case.get("recall", 1.0),
+                    places=4,
+                )
                 self.assertAlmostEqual(
                     result.best_summary.metrics["context_precision"],
                     case["precision"],
