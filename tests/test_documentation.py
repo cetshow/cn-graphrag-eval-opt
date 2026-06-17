@@ -68,6 +68,23 @@ class DocumentationQualityTest(unittest.TestCase):
             self.assertIn(value, combined)
         for value in ("small enterprise benchmark", "medium enterprise benchmark", "39.8%", "48.4%"):
             self.assertIn(value, combined)
+        for value in (
+            "Scale-up",
+            "Cross-document multi-hop",
+            "Noisy retrieval",
+            "Top-K",
+            "MiMo LLM Answer Audit",
+            "Chunking Strategy",
+            "Vertical-Industry",
+            "49.6%",
+            "44.3%",
+            "20.1%",
+            "65.7%",
+            "33.3%",
+            "23.6%",
+            "12.7%",
+        ):
+            self.assertIn(value, combined)
 
         self.assertIn("query_mode=naive", combined)
         self.assertIn("chunk_size=96", combined)

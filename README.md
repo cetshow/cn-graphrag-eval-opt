@@ -160,19 +160,23 @@ runs/demo/
 
 ```bash
 python -m cn_graphrag_eval_opt optimize --config configs/default.toml --out <experiment-out-dir>
-python -m cn_graphrag_eval_opt optimize --corpus examples/benchmarks/small_enterprise/corpus --qa examples/benchmarks/small_enterprise/qa.jsonl --out <experiment-out-dir>
-python -m cn_graphrag_eval_opt optimize --corpus examples/benchmarks/medium_enterprise/corpus --qa examples/benchmarks/medium_enterprise/qa.jsonl --out <experiment-out-dir>
+python -m cn_graphrag_eval_opt optimize --corpus examples/benchmarks/scale_enterprise/corpus --qa examples/benchmarks/scale_enterprise/qa.jsonl --out <experiment-out-dir>
+python -m cn_graphrag_eval_opt optimize --corpus examples/benchmarks/multi_hop_enterprise/corpus --qa examples/benchmarks/multi_hop_enterprise/qa.jsonl --out <experiment-out-dir>
 ```
 
-三组实验覆盖 3/5/10 篇企业制度文档、302/659/1284 个中文字符、3/8/15 条 QA，并统一比较 5 组 pipeline 配置。对比 baseline 是默认实验配置中的 `naive` 检索：`query_mode=naive`、`chunk_size=96`、`overlap=12`、`top_k=2`，检索信号为 lexical + hashing dense，不使用实体图局部/全局扩展。
+新增 7 类实验覆盖规模扩展、多跳 QA、噪声干扰、top-k 成本曲线、MiMo 真实回答、chunking 策略和行业垂直迁移。统一 baseline 是默认 `naive` 检索：`query_mode=naive`、`chunk_size=96`、`overlap=12`、`top_k=2`，检索信号为 lexical + hashing dense，不使用实体图扩展。
 
-| 数据集 | 最佳模式 | Recall | Precision | Faithfulness | Token cost | 相对 baseline 结论 |
-| --- | --- | ---: | ---: | ---: | ---: | --- |
-| built-in enterprise corpus | `local` | 1.0000 | 1.0000 | 0.9792 | 30.5167 | precision 从 0.6667 提升到 1.0000，token cost 降低 22.3%。 |
-| small enterprise benchmark | `naive` | 1.0000 | 0.6875 | 0.9961 | 45.8575 | baseline 最优，相比 `local` 降低 39.8% token cost。 |
-| medium enterprise benchmark | `naive` | 1.0000 | 0.8333 | 0.9983 | 44.1240 | baseline 最优，相比 `local` 降低 48.4% token cost。 |
+| 实验 | 最佳/观察结果 | 量化结论 |
+| --- | --- | --- |
+| 规模扩展 | `scale_enterprise` 12 文档 / 12 QA，`naive` 最优 | recall 0.9722、precision 0.7917；相比 `local` token cost 降低 49.6%。 |
+| 多跳 QA | `multi_hop_enterprise` 上 `hybrid` 最优 | recall 从 baseline 0.8333 提升到 0.9444，但 token cost 增加 44.3%。 |
+| 噪声干扰 | 3 相关 + 3 干扰文档，`naive` 最优 | recall/precision/faithfulness 均为 1.0000；相比 `local` token cost 降低 20.1%。 |
+| top-k 曲线 | multi-hop `hybrid` top-k sweep | top-k 5 达到 recall 1.0000，但比 top-k 3 再增加 65.7% token cost。 |
+| MiMo 真实回答 | 3 次在线 `mimo-v2.5-pro` 调用 | 严格 chunk-id grounded 通过率 1/3；审计捕获数字引用 `[1]` 导致的 citation 格式问题。 |
+| chunking 对比 | scale 数据集上 sentence/recursive/fixed | `fixed` 相比 recursive precision 从 0.7917 降到 0.7083，token cost 增加 23.6%。 |
+| 行业垂直 | finance/manufacturing/retail/healthcare | `global` precision 0.5417，高于 baseline 0.5000，但 token cost 增加 12.7%。 |
 
-结论不是“图谱永远更好”：短小且实体关系明确的 3 文档集上 `local` 图谱检索更精确、更省上下文；词面锚点更强的小/中型制度集上 `naive` baseline 更稳、更省 token。完整 leaderboard、baseline 定义和 case-level 结果见 [docs/experiments.md](docs/experiments.md)。
+结论不是“图谱永远更好”：本项目的优势是用统一实验台识别何时需要图谱、多跳或更高 top-k，何时应该保留更便宜的 baseline。完整 leaderboard、baseline 定义、MiMo 真实回答审计和 case-level 结果见 [docs/experiments.md](docs/experiments.md)。
 
 ### 开发与测试
 
@@ -290,23 +294,27 @@ The `ask` response trace includes `grounded`, `citation_coverage`, `cited_chunk_
 
 ### Dataset Experiment Results
 
-Run the built-in corpus plus the added small and medium enterprise benchmarks:
+Run the built-in corpus plus the added benchmark suites:
 
 ```bash
 python -m cn_graphrag_eval_opt optimize --config configs/default.toml --out <experiment-out-dir>
-python -m cn_graphrag_eval_opt optimize --corpus examples/benchmarks/small_enterprise/corpus --qa examples/benchmarks/small_enterprise/qa.jsonl --out <experiment-out-dir>
-python -m cn_graphrag_eval_opt optimize --corpus examples/benchmarks/medium_enterprise/corpus --qa examples/benchmarks/medium_enterprise/qa.jsonl --out <experiment-out-dir>
+python -m cn_graphrag_eval_opt optimize --corpus examples/benchmarks/scale_enterprise/corpus --qa examples/benchmarks/scale_enterprise/qa.jsonl --out <experiment-out-dir>
+python -m cn_graphrag_eval_opt optimize --corpus examples/benchmarks/multi_hop_enterprise/corpus --qa examples/benchmarks/multi_hop_enterprise/qa.jsonl --out <experiment-out-dir>
 ```
 
-The three suites cover 3/5/10 policy documents, 302/659/1284 Chinese characters, 3/8/15 QA cases, and the same 5 pipeline configs. The comparison baseline is the default `naive` retriever: `query_mode=naive`, `chunk_size=96`, `overlap=12`, and `top_k=2`. It uses lexical + hashing dense retrieval signals without local/global entity-graph expansion.
+The seven added experiments cover scale-up, cross-document multi-hop QA, noisy retrieval, top-k cost curves, online MiMo answering, chunking strategy, and vertical-industry transfer. The shared baseline is `query_mode=naive`, `chunk_size=96`, `overlap=12`, `top_k=2`, with lexical + hashing dense retrieval and no graph expansion.
 
-| Dataset | Best mode | Recall | Precision | Faithfulness | Token cost | Result vs baseline |
-| --- | --- | ---: | ---: | ---: | ---: | --- |
-| built-in enterprise corpus | `local` | 1.0000 | 1.0000 | 0.9792 | 30.5167 | precision improves from 0.6667 to 1.0000 and token cost drops by 22.3%. |
-| small enterprise benchmark | `naive` | 1.0000 | 0.6875 | 0.9961 | 45.8575 | baseline wins and costs 39.8% less than `local`. |
-| medium enterprise benchmark | `naive` | 1.0000 | 0.8333 | 0.9983 | 44.1240 | baseline wins and costs 48.4% less than `local`. |
+| Experiment | Best / observed result | Quantified outcome |
+| --- | --- | --- |
+| Scale-up | `scale_enterprise`, 12 docs / 12 QA, `naive` wins | recall 0.9722, precision 0.7917; 49.6% lower token cost than `local`. |
+| Multi-hop QA | `hybrid` wins on `multi_hop_enterprise` | recall improves from baseline 0.8333 to 0.9444 at 44.3% higher token cost. |
+| Noisy retrieval | `naive` wins with 3 relevant + 3 distractor docs | recall/precision/faithfulness are all 1.0000; 20.1% lower token cost than `local`. |
+| Top-k curve | multi-hop `hybrid` top-k sweep | top-k 5 reaches recall 1.0000 but costs 65.7% more than top-k 3. |
+| MiMo LLM answering | 3 online `mimo-v2.5-pro` calls | strict chunk-id grounded pass rate is 1/3; audit catches numeric citation failures. |
+| Chunking | sentence/recursive/fixed on scale corpus | `fixed` drops precision from 0.7917 to 0.7083 and costs 23.6% more than recursive. |
+| Vertical industry | finance/manufacturing/retail/healthcare | `global` improves precision from 0.5000 to 0.5417 at 12.7% higher token cost. |
 
-The measured conclusion is deliberately practical: graph retrieval helps on the compact entity-local corpus, while the simple `naive` baseline remains stronger on keyword-heavy small/medium policy suites. See [docs/experiments.md](docs/experiments.md) for full leaderboards, baseline definitions, and case-level results.
+The practical takeaway: the project does not blindly prefer GraphRAG. It identifies when graph retrieval, multi-hop retrieval, or larger top-k is worth the cost, and when the cheaper baseline should remain the production choice. See [docs/experiments.md](docs/experiments.md) for full leaderboards, baseline definitions, MiMo answer audits, and case-level results.
 
 ### Development
 
